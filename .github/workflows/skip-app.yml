@@ -224,10 +224,14 @@ jobs:
           SKIP_SIGNING_KEY: ${{ secrets.SKIP_SIGNING_KEY }}
 
       - name: "Attest Build Artifacts"
+        id: provenance
         uses: actions/attest-build-provenance@v1
         with:
           subject-path: 'Skip/build/artifacts/*.*'
-          bundle-path: 'Skip/build/artifacts/attestation.jsonl'
+
+      - name: "Copy Build Attestation"
+        run: 
+          mv ${{ steps.provenance.outputs.bundle-path }} Skip/build/artifacts/attestation.sigstore
 
       - name: "Release"
         if: startsWith(github.ref, 'refs/tags/')

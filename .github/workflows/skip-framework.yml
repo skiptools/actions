@@ -101,9 +101,6 @@ jobs:
           # create the "gradlew" wrapper if it does not already exist
           gradle wrapper
 
-      # should output 1 if Hypervisor.Framework is supported on the system
-      - run: sysctl kern.hv_support
-
       - name: Cache Android emulator snapshot
         uses: actions/cache@v4
         id: avd-cache

@@ -72,17 +72,17 @@ jobs:
       - name: Verify Skip App
         run: skip verify
 
-      - name: Export project
-        run: skip export -v --summary-file=$GITHUB_STEP_SUMMARY
-
-      - name: Run Tests
-        run: test ! -d Tests || skip test || skip test -v
-
       - name: Darwin Fastlane
         run: test ! -d Darwin/fastlane || (cd Darwin && fastlane assemble)
 
       - name: Android Fastlane
         run: test ! -d Android/fastlane || (cd Android && fastlane assemble)
+
+      - name: Export project
+        run: skip export -v --summary-file=$GITHUB_STEP_SUMMARY
+
+      - name: Run Tests
+        run: test ! -d Tests || skip test || skip test -v
 
       - name: "Attest Build Artifacts"
         id: provenance

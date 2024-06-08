@@ -72,11 +72,11 @@ jobs:
       - name: Verify Skip App
         run: skip verify
 
-      #- name: Darwin Fastlane
-        #run: test ! -d Darwin/fastlane || (cd Darwin && fastlane assemble)
+      - name: Darwin Fastlane
+        run: test ! -d Darwin/fastlane || (cd Darwin && FASTLANE_SKIP_ARCHIVE=YES FASTLANE_SKIP_CODESIGNING=YES fastlane assemble)
 
-      #- name: Android Fastlane
-        #run: test ! -d Android/fastlane || (cd Android && fastlane assemble)
+      - name: Android Fastlane
+        run: test ! -d Android/fastlane || (cd Android && fastlane assemble)
 
       - name: Export project
         run: skip export -v --summary-file=$GITHUB_STEP_SUMMARY

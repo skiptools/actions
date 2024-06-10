@@ -43,6 +43,13 @@ jobs:
 
       - run: brew install skiptools/skip/skip
 
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '22'
+          distribution: 'temurin'
+
+      - run: java -version
+
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'

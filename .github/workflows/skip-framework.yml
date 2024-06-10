@@ -53,7 +53,10 @@ jobs:
 
       - run: brew install skiptools/skip/skip tree ${{ inputs.brew-install }}
 
-      - run: echo "JAVA_HOME=$HOMEBREW_PREFIX/opt/java" >> $GITHUB_ENV
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '22'
+          distribution: 'temurin'
 
       - run: java -version
 

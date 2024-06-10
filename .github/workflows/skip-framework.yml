@@ -53,6 +53,8 @@ jobs:
 
       - run: brew install skiptools/skip/skip tree ${{ inputs.brew-install }}
 
+      - run: echo "JAVA_HOME=$HOMEBREW_PREFIX/opt/java" >> $GITHUB_ENV
+
       - run: java -version
 
       - run: skip doctor

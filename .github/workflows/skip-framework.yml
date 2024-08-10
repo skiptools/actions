@@ -4,7 +4,7 @@
 # transpiled through Skip.
 #
 # When tagged with a semantic version (e.g., "1.2.3"), the action will
-# create and distribute release .apk and .ipa artifacts from the project.
+# create and distribute release .aar and .jar artifacts from the project.
 #
 # An example invocation script is as follows, which runs for 
 # every push, every PR, every semver tag, and every day at noon GMT:

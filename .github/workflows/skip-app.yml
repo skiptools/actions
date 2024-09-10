@@ -36,11 +36,6 @@ jobs:
     env:     
       DEVELOPER_DIR: /Applications/Xcode_15.3.app/Contents/Developer
     steps:
-      - uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: current
-          generate-job-summary: false
-
       - run: brew install skiptools/skip/skip
 
       - uses: actions/setup-java@v4

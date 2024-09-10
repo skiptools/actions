@@ -34,7 +34,9 @@ jobs:
     runs-on: macos-14
     timeout-minutes: 120
     env:     
-      DEVELOPER_DIR: /Applications/Xcode_15.3.app/Contents/Developer
+      #DEVELOPER_DIR: /Applications/Xcode_15.3.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_16_beta_6.app/Contents/Developer
+      #DEVELOPER_DIR: /Applications/Xcode_16.1_beta.app/Contents/Developer
     steps:
       - run: brew install skiptools/skip/skip
 
@@ -44,6 +46,10 @@ jobs:
           distribution: 'temurin'
 
       - run: java -version
+
+      # larger projects sometimes yield: Unhandled exception. System.IO.IOException: No space left on device : '/Users/runner/runners/…
+      - name: Free Disk Space
+        run: sudo rm -rf /Applications/Xcode_14*
 
       - uses: actions/checkout@v4
         with:
@@ -79,10 +85,6 @@ jobs:
 
       - name: Android Fastlane
         run: test ! -d Android/fastlane || (cd Android && fastlane assemble)
-
-      # larger projects sometimes yield: Unhandled exception. System.IO.IOException: No space left on device : '/Users/runner/runners/…
-      - name: Clean Build Output
-        run: rm -rf .build
 
       - name: Export project
         run: skip export -v --summary-file=$GITHUB_STEP_SUMMARY

@@ -35,8 +35,8 @@ jobs:
     timeout-minutes: 120
     env:     
       #DEVELOPER_DIR: /Applications/Xcode_15.4.app/Contents/Developer
-      DEVELOPER_DIR: /Applications/Xcode_16_beta_6.app/Contents/Developer
-      #DEVELOPER_DIR: /Applications/Xcode_16.1_beta.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_16.0.app/Contents/Developer
+      #DEVELOPER_DIR: /Applications/Xcode_16.1.app/Contents/Developer
     steps:
       - run: brew install skiptools/skip/skip
 
@@ -80,7 +80,7 @@ jobs:
           sed -i '' "s;PRODUCT_VERSION = .*;PRODUCT_VERSION = $(git rev-list --count HEAD);g" Skip.env
 
       - name: Verify Skip App
-        run: skip verify
+        run: skip verify || skip verify --verbose
 
       - name: Darwin Fastlane
         run: test ! -d Darwin/fastlane || (cd Darwin && FASTLANE_SKIP_ARCHIVE=YES FASTLANE_SKIP_CODESIGNING=YES fastlane assemble)

@@ -83,7 +83,7 @@ jobs:
         run: skip verify || skip verify --verbose
 
       - name: Darwin Fastlane
-        run: test ! -d Darwin/fastlane || (cd Darwin && FASTLANE_SKIP_ARCHIVE=YES FASTLANE_SKIP_CODESIGNING=YES fastlane assemble)
+        run: test ! -d Darwin/fastlane || (cd Darwin && FASTLANE_SKIP_ARCHIVE=YES FASTLANE_SKIP_CODESIGNING=YES FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT=300 FASTLANE_XCODEBUILD_SETTINGS_RETRIES=5 fastlane assemble)
 
       - name: Android Fastlane
         run: test ! -d Android/fastlane || (cd Android && fastlane assemble)

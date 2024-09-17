@@ -63,6 +63,7 @@ jobs:
         run: skip verify
 
       - name: Test macOS & Robolectric (local)
+        if: "!startsWith(github.ref, 'refs/tags/')"
         run: skip test --verbose
 
       - name: Export project

@@ -141,44 +141,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # extract package and initial module name from Package.swift
-          PACKAGE=$(swift package dump-package | jq -r '.name')
-          test -n "${PACKAGE}"
-          MODULE=$(swift package dump-package | jq -r '.targets[0].name')
-          test -n "${MODULE}"
-          COMMIT_DATE=$(git log -1 --format=%ad --date=iso-strict ${GITHUB_REF#refs/*/})
-          test -n "${COMMIT_DATE}"
-
-          # the tag is the most recent GitHub ref
-          TAG="${GITHUB_REF#refs/*/}"
-          test -n "${TAG}"
-
-          gradle assemble --project-dir .build/plugins/outputs/${PACKAGE}/${MODULE}Tests/skipstone -PbuildDir=.build/${MODULE}
-
-          echo "Creating release: ${TAG}"
-          mkdir -p Skip/build/artifacts/
-          PKGDIR="../../../../../../Skip/build/artifacts/"
-
-          tree ./.build/plugins/outputs/
-
-          # create the release .aar
-          cd ./.build/plugins/outputs/${PACKAGE}/${MODULE}Tests/skipstone
-          cp -a ${MODULE}/.build/${MODULE}/outputs/aar/${MODULE}-release.aar ${PKGDIR}/${PACKAGE}-${TAG}.aar
-          # copy the license for the source jar
-          cp ../../../../../../LICENSE* .
-
-          # create a source .jar distribution with consistent timestamps
-          find . -exec touch -d "${COMMIT_DATE:0:19}" {} \;
-
-          zip -r ${PKGDIR}/${PACKAGE}-${TAG}-sources.jar . -x '.*' -x 'build/*' -x '*/build' -x '*/build/*' -x '.*/*' -x '*/.*/*'
-
-          # create a release with the assets and a checksums.txt file
-          cd ${PKGDIR}
-          shasum -a 256 *.* > checksums.txt
-          gh release create "${TAG}" -t "Release ${TAG}" --generate-notes *.*
-          #echo 'Release artifact SHA-256 hashes:' >> .relnotes
-          #echo '```' >> .relnotes
-          #cat checksums.txt >> .relnotes
-          #echo '```' >> .relnotes
-          #gh release create "${TAG}" -t "Release ${TAG}" -F .relnotes *.*
+          gh release create "${TAG}" -t "Release ${TAG}" --generate-notes .build/skip-export/*.*
 

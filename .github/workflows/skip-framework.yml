@@ -60,12 +60,20 @@ jobs:
           submodules: 'recursive'
 
       - name: Setup
+        id: setup
         run: |
           # convert "refs/tags/1.0.0" to "1.0.0"
           # and "refs/heads/main" to "main"
           TAG=${GITHUB_REF#refs/*/}
           # the version if it matches the semantic tag pattern, otherwise "dev"
           echo "RELTAG=${TAG:-'dev'}" >> $GITHUB_ENV
+          # check whether any of the skip.yml files in the project
+          # presume the native toolchain 
+          yq -e '.skip.mode' Sources/*/Skip/skip.yml >> /dev/null && echo "native-toolchain=required" >> $GITHUB_OUTPUT || echo "Native toolchain not needed"
+
+      - name: Install Swift Android Toolchain
+        if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
+        run: brew install skiptools/skip/swift-android-toolchain@6.0
 
       - name: Verify Skip Framework
         run: skip verify

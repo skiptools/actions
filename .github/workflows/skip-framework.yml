@@ -83,7 +83,7 @@ jobs:
 
       - name: Clean Build
         # workaround for Swift 5.9 error: "error: invalid tool type in 'tools' map" (https://github.com/swiftlang/swift-package-manager/issues/6755)
-        run: swift package clean
+        run: rm -rf .build
 
       - name: Test macOS & Robolectric (local)
         if: "!startsWith(github.ref, 'refs/tags/')"

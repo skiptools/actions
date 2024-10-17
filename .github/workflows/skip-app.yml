@@ -29,25 +29,29 @@
 name: "Skip App CI"
 on:
   workflow_call:
+    inputs:
+      brew-install:
+        required: false
+        type: string
 jobs:
   skip-app:
     runs-on: macos-14
     timeout-minutes: 120
     env:     
       #DEVELOPER_DIR: /Applications/Xcode_15.4.app/Contents/Developer
-      DEVELOPER_DIR: /Applications/Xcode_16.0.app/Contents/Developer
-      #DEVELOPER_DIR: /Applications/Xcode_16.1.app/Contents/Developer
+      #DEVELOPER_DIR: /Applications/Xcode_16.0.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_16.1.app/Contents/Developer
     steps:
-      - run: brew install skiptools/skip/skip
-
-      - run: ls -la /Applications/
-
-      - uses: actions/setup-java@v4
+      - name: Cache Homebrew packages
+        uses: actions/cache@v4
         with:
-          java-version: '22'
-          distribution: 'temurin'
+          path: ~/Library/Caches/Homebrew
+          key: homebrew-packages
 
-      - run: java -version
+      - name: Install Skip
+        run: brew install skiptools/skip/skip tree ${{ inputs.brew-install }}
+
+      - run: skip doctor
 
       # larger projects sometimes yield: Unhandled exception. System.IO.IOException: No space left on device : '/Users/runner/runners/…
       - name: Free Disk Space
@@ -78,6 +82,9 @@ jobs:
           # update Skip.env to set build number to the git commit count
           sed -i '' "s;PRODUCT_VERSION = .*;PRODUCT_VERSION = $(git rev-list --count HEAD);g" Skip.env
 
+          # the emulator we use should match the host architecture
+          echo "android-arch=$(uname -m | sed 's/arm64/arm64-v8a/')" >> $GITHUB_OUTPUT
+
           # check whether any of the skip.yml files in the project
           # presume the native toolchain 
           yq -e '.skip.mode' Sources/*/Skip/skip.yml >> /dev/null && echo "native-toolchain=required" >> $GITHUB_OUTPUT || echo "Native toolchain not needed"
@@ -96,7 +103,7 @@ jobs:
         run: test ! -d Android/fastlane || (cd Android && fastlane assemble)
 
       - name: Export project
-        run: skip export -v --summary-file=$GITHUB_STEP_SUMMARY
+        run: skip export -v -d skip-export --show-tree --summary-file=$GITHUB_STEP_SUMMARY
 
       - name: Run Tests
         run: test ! -d Tests || skip test || skip test -v
@@ -105,11 +112,11 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${RELTAG}" -t "Release ${RELTAG}" --generate-notes .build/skip-export/*.*
+        run: gh release create "${RELTAG}" -t "Release ${RELTAG}" --generate-notes skip-export/*.*
 
       - name: "Upload Build Artifacts"
         uses: actions/upload-artifact@v4
         if: always()
         with: 
-          path: .build/skip-export/
+          path: skip-export/
 

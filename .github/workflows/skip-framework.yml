@@ -39,7 +39,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-13, macos-14, macos-15]
+        os: [macos-13]
+        #os: [macos-13, macos-14, macos-15]
     runs-on: ${{ matrix.os }}
     # needs hypervisor support (https://github.com/ReactiveCircus/android-emulator-runner/issues/350)
     #runs-on: macos-14

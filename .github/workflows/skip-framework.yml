@@ -44,14 +44,14 @@ jobs:
     env:     
       DEVELOPER_DIR: /Applications/Xcode_15.2.app/Contents/Developer
     steps:
-      - run: brew install skiptools/skip/skip tree ${{ inputs.brew-install }}
-
-      - uses: actions/setup-java@v4
+      - name: Cache Homebrew packages
+        uses: actions/cache@v4
         with:
-          java-version: '22'
-          distribution: 'temurin'
+          path: ~/Library/Caches/Homebrew
+          key: homebrew-packages
 
-      - run: java -version
+      - name: Install Skip
+        run: brew install skiptools/skip/skip tree ${{ inputs.brew-install }}
 
       - run: skip doctor
 
@@ -67,6 +67,8 @@ jobs:
           TAG=${GITHUB_REF#refs/*/}
           # the version if it matches the semantic tag pattern, otherwise "dev"
           echo "RELTAG=${TAG:-'dev'}" >> $GITHUB_ENV
+          # the emulator we use should match the host architecture
+          echo "android-arch=$(uname -m | sed 's/arm64/arm64-v8a/')" >> $GITHUB_OUTPUT
           # check whether any of the skip.yml files in the project
           # presume the native toolchain 
           yq -e '.skip.mode' Sources/*/Skip/skip.yml >> /dev/null && echo "native-toolchain=required" >> $GITHUB_OUTPUT || echo "Native toolchain not needed"
@@ -122,7 +124,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-30-aosp-atd-x86_64
+          key: avd-30-aosp-atd-${{ steps.setup.outputs.android-arch }}
 
       - name: Generate Android emulator snapshot
         if: steps.avd-cache.outputs.cache-hit != 'true'
@@ -131,7 +133,7 @@ jobs:
           working-directory: .build/android-tests
           target: aosp_atd
           api-level: 30
-          arch: x86_64
+          arch: ${{ steps.setup.outputs.android-arch }}
           channel: canary
           profile: pixel
           avd-name: Pixel_3a_API_30
@@ -148,7 +150,7 @@ jobs:
           working-directory: .build/android-tests
           target: aosp_atd
           api-level: 30
-          arch: x86_64
+          arch: ${{ steps.setup.outputs.android-arch }}
           channel: canary
           profile: pixel
           #profile: Galaxy Nexus

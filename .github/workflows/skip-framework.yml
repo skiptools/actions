@@ -36,7 +36,10 @@ on:
 
 jobs:
   skip-framework:
-    runs-on: macos-13
+    strategy:
+      matrix:
+        os: [macos-13, macos-14, macos-15]
+    runs-on: ${{ matrix.os }}
     # needs hypervisor support (https://github.com/ReactiveCircus/android-emulator-runner/issues/350)
     #runs-on: macos-14
 
@@ -144,7 +147,7 @@ jobs:
 
 
       - name: Test Android (connected)
-        if: "!startsWith(github.ref, 'refs/tags/')"
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && matrix.os == "macos-13" }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
           working-directory: .build/android-tests
@@ -159,7 +162,7 @@ jobs:
           script: adb logcat *:S TestRunner:V & ./gradlew connectedCheck --stacktrace
 
       - name: "Release"
-        if: startsWith(github.ref, 'refs/tags/')
+        if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.os == "macos-13" }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "${RELTAG}" -t "Release ${RELTAG}" --generate-notes skip-export/*.*

@@ -148,7 +148,7 @@ jobs:
           working-directory: .build/android-tests
           target: aosp_atd
           api-level: 30
-          arch: x86
+          arch: x86_64
           channel: canary
           profile: pixel
           #profile: Galaxy Nexus

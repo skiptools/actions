@@ -39,15 +39,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-13]
-        #os: [macos-13, macos-14, macos-15]
+        # only macos-13 has hypervisor support for the Android emulator
+        # https://github.com/ReactiveCircus/android-emulator-runner/issues/350
+        #os: [macos-13]
+        os: [macos-13, macos-14, macos-15]
     runs-on: ${{ matrix.os }}
-    # needs hypervisor support (https://github.com/ReactiveCircus/android-emulator-runner/issues/350)
-    #runs-on: macos-14
-
     timeout-minutes: 120
-    env:     
-      DEVELOPER_DIR: /Applications/Xcode_15.2.app/Contents/Developer
     steps:
       - name: Cache Homebrew packages
         uses: actions/cache@v4
@@ -149,7 +146,7 @@ jobs:
 
 
       - name: Test Android (connected)
-        if: ${{ !startsWith(github.ref, 'refs/tags/') && matrix.os == 'macos-13' }}
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && steps.setup.outputs.android-arch == 'x86_64' }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
           working-directory: .build/android-tests

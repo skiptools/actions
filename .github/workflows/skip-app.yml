@@ -39,8 +39,8 @@ jobs:
     timeout-minutes: 120
     env:     
       #DEVELOPER_DIR: /Applications/Xcode_15.4.app/Contents/Developer
-      DEVELOPER_DIR: /Applications/Xcode_16.0.app/Contents/Developer
-      #DEVELOPER_DIR: /Applications/Xcode_16.1.app/Contents/Developer
+      #DEVELOPER_DIR: /Applications/Xcode_16.0.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_16.1.app/Contents/Developer
     steps:
       - name: Cache Homebrew packages
         uses: actions/cache@v4
@@ -97,7 +97,7 @@ jobs:
           brew install skiptools/skip/swift-android-toolchain@6.0
           # Add the toolchain to the SKIP_SWIFT_PATH environment
           # that is used by the skip tool when forking Swift
-          echo "SKIP_SWIFT_PATH=${HOME}/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/swift" >> $GITHUB_ENV
+          #echo "SKIP_SWIFT_PATH=${HOME}/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/swift" >> $GITHUB_ENV
 
       - name: Verify Skip App
         run: skip verify || skip verify --verbose

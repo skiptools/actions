@@ -77,7 +77,10 @@ jobs:
 
       - name: Install Swift Android Toolchain
         if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
-        run: brew install skiptools/skip/swift-android-toolchain@6.0
+        run: |
+          brew install skiptools/skip/swift-android-toolchain@6.0
+          # Add the toolchain to the PATH
+          echo "PATH=~/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/:${PATH}" >> $GITHUB_ENV
 
       - name: Verify Skip Framework
         run: skip verify

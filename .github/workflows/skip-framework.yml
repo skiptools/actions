@@ -75,6 +75,8 @@ jobs:
           # presume the native toolchain 
           yq -e '.skip.mode' Sources/*/Skip/skip.yml >> /dev/null && echo "native-toolchain=required" >> $GITHUB_OUTPUT || echo "Native toolchain not needed"
 
+          defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
+
       - name: Install Swift Android Toolchain
         if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
         run: |
@@ -107,7 +109,7 @@ jobs:
           # before some other module that might come earlier (like "Auth")
           SKIP_TEST_MODULE=$(xcodebuild -list -json | jq -r '.workspace.schemes | sort_by(.) | reverse | .[0]')
           echo "Testing Skip module: ${SKIP_TEST_MODULE} from schemes list: $(xcodebuild -list -json | jq -r '.workspace.schemes[]')"
-          SKIP_ZERO=1 xcodebuild test -sdk iphonesimulator -destination "platform=iOS Simulator,name=iPhone 15" -skipPackagePluginValidation -configuration debug -scheme ${SKIP_TEST_MODULE}
+          SKIP_ZERO=1 xcodebuild test -sdk iphonesimulator -destination "platform=iOS Simulator,name=iPhone 15" -skipMacroValidation -skipPackagePluginValidation -configuration debug -scheme ${SKIP_TEST_MODULE}
 
       - name: Prepare Android emulator
         if: "!startsWith(github.ref, 'refs/tags/')"

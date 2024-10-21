@@ -33,6 +33,11 @@ on:
       brew-install:
         required: false
         type: string
+    secrets:
+      KEYSTORE_PROPERTIES:
+        required: false
+      KEYSTORE_JKS:
+        required: false
 jobs:
   skip-app:
     runs-on: macos-14
@@ -63,6 +68,8 @@ jobs:
 
       - name: Setup
         id: setup
+        env:
+          KEYSTORE_PROPERTIES: ${{ secrets.KEYSTORE_PROPERTIES }}
         run: |
           # convert "refs/tags/1.0.0" to "1.0.0"
           # and "refs/heads/main" to "main"
@@ -85,6 +92,10 @@ jobs:
           # the emulator we use should match the host architecture
           echo "android-arch=$(uname -m | sed 's/arm64/arm64-v8a/')" >> $GITHUB_OUTPUT
 
+          # check whether the KEYSTORE_PROPERTIES secret exists,
+          # and if so we will run the signing option later
+          echo 'android-keystore-exists=$(test -z "${KEYSTORE_PROPERTIES}" && echo "0" || echo "1")' >> $GITHUB_OUTPUT
+
           # check whether any of the skip.yml files in the project
           # presume the native toolchain 
           yq -e '.skip.mode' Sources/*/Skip/skip.yml >> /dev/null && echo "native-toolchain=required" >> $GITHUB_OUTPUT || echo "Native toolchain not needed"
@@ -104,6 +115,15 @@ jobs:
 
       - name: Darwin Fastlane
         run: test ! -d Darwin/fastlane || (cd Darwin && FASTLANE_SKIP_ARCHIVE=YES FASTLANE_SKIP_CODESIGNING=YES FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT=300 FASTLANE_XCODEBUILD_SETTINGS_RETRIES=5 fastlane assemble)
+
+      - name: Setup Android App Signing
+        if: ${{ steps.setup.outputs.android-keystore-exists == '1' }}
+        env:
+          KEYSTORE_JKS: ${{ secrets.KEYSTORE_JKS }}
+          KEYSTORE_PROPERTIES: ${{ secrets.KEYSTORE_PROPERTIES }}
+        run: |
+          echo $KEYSTORE_JKS | base64 --decode > Android/app/keystore.jks
+          echo $KEYSTORE_PROPERTIES > Android/app/keystore.properties
 
       - name: Android Fastlane
         run: test ! -d Android/fastlane || (cd Android && fastlane assemble)

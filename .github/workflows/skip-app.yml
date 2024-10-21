@@ -38,6 +38,8 @@ on:
         required: false
       KEYSTORE_JKS:
         required: false
+      GOOGLE_PLAY_APIKEY:
+        required: false
 jobs:
   skip-app:
     runs-on: macos-14

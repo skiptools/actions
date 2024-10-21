@@ -115,9 +115,6 @@ jobs:
       - name: Verify Skip App
         run: skip verify || skip verify --verbose
 
-      - name: Darwin Fastlane
-        run: test ! -d Darwin/fastlane || (cd Darwin && FASTLANE_SKIP_ARCHIVE=YES FASTLANE_SKIP_CODESIGNING=YES FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT=300 FASTLANE_XCODEBUILD_SETTINGS_RETRIES=5 fastlane assemble)
-
       - name: Setup Android App Signing
         if: ${{ env.KEYSTORE_PROPERTIES != '' }}
         env:
@@ -129,6 +126,9 @@ jobs:
 
       - name: Android Fastlane
         run: test ! -d Android/fastlane || (cd Android && fastlane assemble)
+
+      - name: Darwin Fastlane
+        run: test ! -d Darwin/fastlane || (cd Darwin && FASTLANE_SKIP_ARCHIVE=YES FASTLANE_SKIP_CODESIGNING=YES FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT=300 FASTLANE_XCODEBUILD_SETTINGS_RETRIES=5 fastlane assemble)
 
       - name: Export project
         run: skip export -v -d skip-export --show-tree --summary-file=$GITHUB_STEP_SUMMARY

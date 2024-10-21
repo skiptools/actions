@@ -96,7 +96,7 @@ jobs:
 
           # check whether the KEYSTORE_PROPERTIES secret exists,
           # and if so we will run the signing option later
-          echo 'android-keystore-exists=$(test -z "${KEYSTORE_PROPERTIES}" && echo "0" || echo "1")' >> $GITHUB_OUTPUT
+          echo 'android-keystore-exists=$(test -z "${KEYSTORE_PROPERTIES}" && echo "false" || echo "true")' >> $GITHUB_OUTPUT
 
           # check whether any of the skip.yml files in the project
           # presume the native toolchain 
@@ -119,7 +119,7 @@ jobs:
         run: test ! -d Darwin/fastlane || (cd Darwin && FASTLANE_SKIP_ARCHIVE=YES FASTLANE_SKIP_CODESIGNING=YES FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT=300 FASTLANE_XCODEBUILD_SETTINGS_RETRIES=5 fastlane assemble)
 
       - name: Setup Android App Signing
-        if: ${{ steps.setup.outputs.android-keystore-exists == '1' }}
+        if: ${{ env.KEYSTORE_PROPERTIES != '' }}
         env:
           KEYSTORE_JKS: ${{ secrets.KEYSTORE_JKS }}
           KEYSTORE_PROPERTIES: ${{ secrets.KEYSTORE_PROPERTIES }}

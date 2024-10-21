@@ -30,6 +30,12 @@ name: "Skip Framework CI"
 on:
   workflow_call:
     inputs:
+      # only macos-13 has hypervisor support for the Android emulator
+      # https://github.com/ReactiveCircus/android-emulator-runner/issues/350
+      runs-on:
+        required: true
+        type: string
+        default: "['macos-13']"
       brew-install:
         required: false
         type: string
@@ -39,10 +45,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # only macos-13 has hypervisor support for the Android emulator
-        # https://github.com/ReactiveCircus/android-emulator-runner/issues/350
-        os: [macos-13]
-        #os: [macos-13, macos-14, macos-15]
+        os: ${{ fromJson(inputs.runs-on) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     steps:

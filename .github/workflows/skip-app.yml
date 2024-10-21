@@ -147,7 +147,7 @@ jobs:
         env:
           GOOGLE_PLAY_APIKEY: ${{ secrets.GOOGLE_PLAY_APIKEY }}
         run: |
-          echo "${GOOGLE_PLAY_APIKEY}" > Android/fastlane/apikey.json
+          echo "${GOOGLE_PLAY_APIKEY}" | base64 --decode > Android/fastlane/apikey.json
           test ! -d Android/fastlane || (cd Android && fastlane release)
 
       - name: "Upload Build Artifacts"

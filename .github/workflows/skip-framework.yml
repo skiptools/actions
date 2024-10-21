@@ -33,7 +33,7 @@ on:
       # only macos-13 has hypervisor support for the Android emulator
       # https://github.com/ReactiveCircus/android-emulator-runner/issues/350
       runs-on:
-        required: true
+        required: false
         type: string
         default: "['macos-13']"
       brew-install:
@@ -100,7 +100,7 @@ jobs:
 
       - name: Test macOS & Robolectric (local)
         # currently special-casing repo name for skip-bridge failures
-        if: ${{ !startsWith(github.ref, 'refs/tags/') && github.event.repository.name != 'skip-bridge' }}
+        if: ${{ !startsWith(github.ref, 'refs/tags/')
         run: skip test --verbose
 
       - name: Test iOS (connected)

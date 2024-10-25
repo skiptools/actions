@@ -101,7 +101,7 @@ jobs:
       - name: Test macOS & Robolectric (local)
         # currently special-casing repo name for skip-bridge failures
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        run: skip test --verbose
+        run: swift test --verbose
 
       - name: Test iOS (connected)
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}

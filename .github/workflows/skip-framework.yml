@@ -112,7 +112,8 @@ jobs:
 
       - name: Test macOS & Robolectric (local)
         if: ${{ inputs.run-local-tests == true && !startsWith(github.ref, 'refs/tags/') }}
-        run: skip test --verbose
+        run: swift test --verbose
+        #run: skip test --verbose
 
       - name: Test iOS (connected)
         if: ${{ inputs.run-ios-tests == true && !startsWith(github.ref, 'refs/tags/') }}

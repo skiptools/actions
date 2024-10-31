@@ -86,19 +86,17 @@ jobs:
           echo "RELTAG=${TAG:-'dev'}" >> $GITHUB_ENV
           # the emulator we use should match the host architecture
           echo "android-arch=$(uname -m | sed 's/arm64/arm64-v8a/')" >> $GITHUB_OUTPUT
-          # check whether any of the skip.yml files in the project
-          # presume the native toolchain 
-          yq -e '.skip.mode' Sources/*/Skip/skip.yml >> /dev/null && echo "native-toolchain=required" >> $GITHUB_OUTPUT || echo "Native toolchain not needed"
-
+          # disable user confirmation to process macros
           defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
+          # check whether we use skip-bridge and so need the Android toolchain 
+          swift package resolve
+          test -d Sources/SkipBridge || jq -e '.pins | any(.identity == "skip-bridge")' Package.resolved >> /dev/null && echo "native-toolchain=required" >> $GITHUB_OUTPUT || echo "Swift Android toolchain not required"
 
       - name: Install Swift Android Toolchain
         if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
         run: |
-          brew install skiptools/skip/swift-android-toolchain@6.0
-          # Add the toolchain to the SKIP_SWIFT_PATH environment
-          # that is used by the skip tool when forking Swift
-          echo "SKIP_SWIFT_PATH=${HOME}/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/swift" >> $GITHUB_ENV
+          skip android sdk install
+          #brew install skiptools/skip/swift-android-toolchain@6.0
 
       - name: Verify Skip Framework
         run: skip verify
@@ -112,8 +110,7 @@ jobs:
 
       - name: Test macOS & Robolectric (local)
         if: ${{ inputs.run-local-tests == true && !startsWith(github.ref, 'refs/tags/') }}
-        run: swift test --verbose
-        #run: skip test --verbose
+        run: skip test --verbose
 
       - name: Test iOS (connected)
         if: ${{ inputs.run-ios-tests == true && !startsWith(github.ref, 'refs/tags/') }}

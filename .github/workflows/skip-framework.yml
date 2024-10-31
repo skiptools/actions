@@ -95,7 +95,7 @@ jobs:
       - name: Install Swift Android Toolchain
         if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
         run: |
-          skip android sdk install
+          skip android sdk install --verbose
           #brew install skiptools/skip/swift-android-toolchain@6.0
 
       - name: Verify Skip Framework

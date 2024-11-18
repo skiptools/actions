@@ -39,6 +39,10 @@ on:
       brew-install:
         required: false
         type: string
+      run-export:
+        required: false
+        type: boolean
+        default: true
       run-local-tests:
         required: false
         type: boolean
@@ -102,6 +106,7 @@ jobs:
         run: skip verify
 
       - name: Export project
+        if: ${{ inputs.run-export == true }}
         run: skip export -v -d skip-export --show-tree --sdk-path=legacy --summary-file=$GITHUB_STEP_SUMMARY
 
       - name: Clean Build

@@ -58,7 +58,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: current
-          generate-job-summary: false
+          add-job-summary: 'on-failure'
 
       - name: Install Skip
         run: brew install skiptools/skip/skip tree ${{ inputs.brew-install }}

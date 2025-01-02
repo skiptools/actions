@@ -40,6 +40,8 @@ on:
         required: false
       GOOGLE_PLAY_APIKEY:
         required: false
+      APPLE_APPSTORE_APIKEY:
+        required: false
 jobs:
   skip-app:
     runs-on: macos-15
@@ -128,6 +130,16 @@ jobs:
         run: |
           echo "${KEYSTORE_JKS}" | base64 --decode > Android/app/keystore.jks
           echo "${KEYSTORE_PROPERTIES}" | base64 --decode > Android/app/keystore.properties
+
+      ### MOVEME: temporary location to speed up release testing
+      - name: Submit iOS App to App Store
+        ###if: ${{ startsWith(github.ref, 'refs/tags/') && env.APPLE_APPSTORE_APIKEY != '' }}
+        if: ${{ env.APPLE_APPSTORE_APIKEY != '' }}
+        env:
+          APPLE_APPSTORE_APIKEY: ${{ secrets.APPLE_APPSTORE_APIKEY }}
+        run: |
+          echo "${APPLE_APPSTORE_APIKEY}" | base64 --decode > Darwin/fastlane/apikey.json
+          test ! -d Darwin/fastlane || (cd Darwin && fastlane release)
 
       - name: Android Fastlane
         run: test ! -d Android/fastlane || (cd Android && fastlane assemble)

@@ -154,7 +154,8 @@ jobs:
           APPLE_APPSTORE_APIKEY: ${{ secrets.APPLE_APPSTORE_APIKEY }}
         run: |
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles/
-          echo -n "${{ secrets.APPLE_MOBILEPROVISION }}" | base64 --decode -o ~/Library/MobileDevice/Provisioning\ Profiles/a90ea148-08a5-4c68-8f84-57a5974c20b1.mobileprovision
+          echo -n "${{ secrets.APPLE_MOBILEPROVISION }}" | base64 --decode -o ~/Library/MobileDevice/Provisioning\ Profiles/app.mobileprovision
+          echo -n "${{ secrets.APPLE_MOBILEPROVISION }}" | base64 --decode -o AppStore_org.appfair.app.Showcase.mobileprovision
           echo -n "${{ secrets.APPLE_APPSTORE_APIKEY }}" | base64 --decode -o Darwin/fastlane/apikey.json
           test ! -d Darwin/fastlane || (cd Darwin && fastlane release)
 

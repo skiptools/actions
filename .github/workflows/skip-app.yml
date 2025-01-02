@@ -42,6 +42,8 @@ on:
         required: false
       APPLE_APPSTORE_APIKEY:
         required: false
+      APPLE_CERTIFICATES_P12:
+        required: false
 jobs:
   skip-app:
     runs-on: macos-15

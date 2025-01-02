@@ -134,8 +134,8 @@ jobs:
           KEYSTORE_JKS: ${{ secrets.KEYSTORE_JKS }}
           KEYSTORE_PROPERTIES: ${{ secrets.KEYSTORE_PROPERTIES }}
         run: |
-          echo "${KEYSTORE_JKS}" | base64 --decode > Android/app/keystore.jks
-          echo "${KEYSTORE_PROPERTIES}" | base64 --decode > Android/app/keystore.properties
+          echo -n "${KEYSTORE_JKS}" | base64 --decode > Android/app/keystore.jks
+          echo -n "${KEYSTORE_PROPERTIES}" | base64 --decode > Android/app/keystore.properties
 
       ### MOVEME: temporary location to speed up release testing
       - name: Setup iOS App Signing
@@ -153,8 +153,9 @@ jobs:
         env:
           APPLE_APPSTORE_APIKEY: ${{ secrets.APPLE_APPSTORE_APIKEY }}
         run: |
-          echo -n "${{ secrets.APPLE_APPSTORE_APIKEY }}" | base64 --decode -o Darwin/fastlane/apikey.json
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles/
           echo -n "${{ secrets.APPLE_MOBILEPROVISION }}" | base64 --decode -o ~/Library/MobileDevice/Provisioning\ Profiles/app.mobileprovision
+          echo -n "${{ secrets.APPLE_APPSTORE_APIKEY }}" | base64 --decode -o Darwin/fastlane/apikey.json
           test ! -d Darwin/fastlane || (cd Darwin && fastlane release)
 
       - name: Android Fastlane
@@ -180,7 +181,7 @@ jobs:
         env:
           GOOGLE_PLAY_APIKEY: ${{ secrets.GOOGLE_PLAY_APIKEY }}
         run: |
-          echo "${GOOGLE_PLAY_APIKEY}" | base64 --decode > Android/fastlane/apikey.json
+          echo -n "${GOOGLE_PLAY_APIKEY}" | base64 --decode > Android/fastlane/apikey.json
           test ! -d Android/fastlane || (cd Android && fastlane release)
 
       - name: "Upload Build Artifacts"

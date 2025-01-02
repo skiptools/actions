@@ -46,6 +46,8 @@ on:
         required: false
       APPLE_CERTIFICATES_P12_PASSWORD:
         required: false
+      APPLE_MOBILEPROVISION:
+        required: false
 jobs:
   skip-app:
     runs-on: macos-15
@@ -151,7 +153,8 @@ jobs:
         env:
           APPLE_APPSTORE_APIKEY: ${{ secrets.APPLE_APPSTORE_APIKEY }}
         run: |
-          echo "${APPLE_APPSTORE_APIKEY}" | base64 --decode > Darwin/fastlane/apikey.json
+          echo -n "${{ secrets.APPLE_APPSTORE_APIKEY }}" | base64 --decode -o Darwin/fastlane/apikey.json
+          echo -n "${{ secrets.APPLE_MOBILEPROVISION }}" | base64 --decode -o ~/Library/MobileDevice/Provisioning\ Profiles/app.mobileprovision
           test ! -d Darwin/fastlane || (cd Darwin && fastlane release)
 
       - name: Android Fastlane

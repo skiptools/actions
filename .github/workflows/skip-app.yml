@@ -141,7 +141,7 @@ jobs:
         working-directory: Android
         run: test ! -d fastlane || fastlane assemble
 
-      - name: Setup iOS App Signing
+      - name: Setup Darwin App Signing
         uses: apple-actions/import-codesign-certs@v3
         if: ${{ env.APPLE_CERTIFICATES_P12 != '' }}
         env:
@@ -176,7 +176,7 @@ jobs:
         #echo -n "${{ secrets.APPLE_MOBILEPROVISION }}" | base64 --decode -o ~/Library/MobileDevice/Provisioning\ Profiles/app.mobileprovision
         run: |
           echo -n "${{ secrets.APPLE_APPSTORE_APIKEY }}" | base64 --decode -o fastlane/apikey.json
-          test ! -d fastlane || fastlane release
+          fastlane release
 
       - name: Submit Android App to Play Store
         env:
@@ -185,7 +185,7 @@ jobs:
         working-directory: Android
         run: |
           echo -n "${GOOGLE_PLAY_APIKEY}" | base64 --decode > fastlane/apikey.json
-          test ! -d fastlane || fastlane release
+          fastlane release
 
       - name: "Upload Build Artifacts"
         uses: actions/upload-artifact@v4

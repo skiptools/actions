@@ -159,7 +159,7 @@ jobs:
           key: avd-30-aosp-atd-${{ steps.setup.outputs.android-arch }}
 
       - name: Generate Android emulator snapshot
-        if: ${{ inputs.run-android-tests == true && steps.avd-cache.outputs.cache-hit != 'true' && steps.setup.outputs.android-arch == 'x86_64' }}
+        if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && steps.avd-cache.outputs.cache-hit != 'true' && steps.setup.outputs.android-arch == 'x86_64' }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
           working-directory: .build/android-tests

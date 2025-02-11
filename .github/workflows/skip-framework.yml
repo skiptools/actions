@@ -129,7 +129,7 @@ jobs:
             SIMDEVICE="iPhone 15"
           else
             SIMDEVICE="iPhone 16"
-          endif
+          fi
 
           # run the tests against the first listed scheme, which for a
           # single-module package will just be "project-name",

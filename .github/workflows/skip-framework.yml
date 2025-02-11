@@ -141,7 +141,7 @@ jobs:
           SKIP_ZERO=1 xcodebuild test -sdk iphonesimulator -destination "platform=iOS Simulator,name=${SIMDEVICE}" -skipMacroValidation -skipPackagePluginValidation -configuration debug -scheme ${SKIP_TEST_MODULE}
 
       - name: Prepare Android emulator
-        if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && steps.setup.outputs.android-arch == 'x86_64' }}
         run: |
           PACKAGE=$(swift package dump-package | jq -r '.name')
           MODULE=$(swift package dump-package | jq -r '.targets[] | select(.type == "test") | .name' | head -n 1)

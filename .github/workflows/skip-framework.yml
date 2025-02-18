@@ -98,14 +98,14 @@ jobs:
           # disable user confirmation to process macros
           defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
           # check whether we use skip-bridge and so need the Android toolchain 
-          swift package resolve
+          SKIP_BRIDGE=1 swift package resolve
           test -d Sources/SkipBridge || jq -e '.pins | any(.identity == "skip-bridge")' Package.resolved >> /dev/null && echo "native-toolchain=required" >> $GITHUB_OUTPUT || echo "Swift Android toolchain not required"
 
       - name: Install Swift Android Toolchain
         if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
         run: |
-          skip android sdk install --verbose
-          #brew install skiptools/skip/swift-android-toolchain@6.0
+          skip android sdk install
+          skip android build
 
       - name: Verify Skip Framework
         run: skip verify
@@ -179,7 +179,6 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
           script: echo "Generated AVD snapshot for caching"
-
 
       - name: Test Android (connected)
         if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && steps.setup.outputs.android-arch == 'x86_64' }}

@@ -105,7 +105,7 @@ jobs:
         if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
         run: |
           skip android sdk install
-          skip android build
+          skip android build --bridge
           rm -rf .build
 
       - name: Verify Skip Framework

@@ -106,6 +106,7 @@ jobs:
         run: |
           skip android sdk install
           skip android build
+          rm -rf .build
 
       - name: Verify Skip Framework
         run: skip verify

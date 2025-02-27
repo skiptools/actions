@@ -104,10 +104,20 @@ jobs:
           test -d Sources/SkipBridge || jq -e '.pins | any(.identity == "skip-bridge")' Package.resolved >> /dev/null && echo "native-toolchain=required" >> $GITHUB_OUTPUT || echo "Swift Android toolchain not required"
 
       - name: Swift Android Toolchain Build
+        id: setup-toolchain
         if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
         uses: skiptools/swift-android-action@v2
         with:
           build-tests: false
+
+      - name: Setup Swift Path
+        if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
+        run:
+          # add the newly installed toolchain to the path
+          echo "${{ steps.setup-toolchain.outputs.swift-install }}/bin" >> $GITHUB_PATH
+
+      - name: Check Swift Version
+        run: swift --version
 
       - name: Clean Build
         run: rm -rf .build

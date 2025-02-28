@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   call-workflow:
-    uses: skiptools/actions/.github/workflows/skip-framework.yml@main
+    uses: skiptools/actions/.github/workflows/skip-framework.yml@v1
 ```
 
 ## Applications
@@ -47,7 +47,7 @@ permissions:
 
 jobs:
   call-workflow:
-    uses: skiptools/actions/.github/workflows/skip-app.yml@app
+    uses: skiptools/actions/.github/workflows/skip-app.yml@v1
 ```
 
 ## Releasing

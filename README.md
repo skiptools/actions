@@ -52,7 +52,9 @@ jobs:
 
 ## Releasing
 
+To release a version and update the symbolic "v1" tag, run:
+
 ```
-git tag v1.0.0 && git push --tags && git tag -fa v2 -m "Update v2 tag" && git push origin v2 --force && gh release create --latest --notes-from-tag --verify-tag --generate-notes
+git tag v1.0.0 && git push --tags && git tag -fa v1 -m "Update v1 tag" && git push origin v1 --force
 ```
 

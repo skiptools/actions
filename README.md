@@ -1,8 +1,58 @@
-
 # Skip Continuous Integration Workflows
 
 This repository host shared workflows that can be used
 by Skip framework and app projects to build, test, and
 deploy standard Skip projects.
 
+## Frameworks
+
+For building and testing a framework,
+create a `.github/workflows/ci.yml` file like this:
+
+```yaml
+name: lib-name
+on:
+  push:
+    branches: '*'
+    tags: "[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  call-workflow:
+    uses: skiptools/actions/.github/workflows/skip-framework.yml@main
+```
+
+## Applications
+
+For building and testing an app,
+create a `.github/workflows/ci.yml` file like this:
+
+```yaml
+name: app-name
+on:
+  push:
+    branches: '*'
+    tags: "[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  call-workflow:
+    uses: skiptools/actions/.github/workflows/skip-app.yml@app
+```
+
+## Releasing
+
+```
+git tag v1.0.0 && git push --tags && git tag -fa v2 -m "Update v2 tag" && git push origin v2 --force && gh release create --latest --notes-from-tag --verify-tag --generate-notes
+```
 

@@ -24,7 +24,7 @@
 # 
 # jobs:
 #   call-workflow:
-#     uses: skiptools/actions/.github/workflows/skip-framework.yml@main
+#     uses: skiptools/actions/.github/workflows/skip-framework.yml@v1
 # 
 name: "Skip Framework CI"
 on:

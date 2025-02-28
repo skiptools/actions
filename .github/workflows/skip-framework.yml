@@ -159,7 +159,13 @@ jobs:
           MODULE=$(swift package dump-package | jq -r '.targets[] | select(.type == "test") | .name' | head -n 1)
 
           cd .build/
-          ln -vs plugins/outputs/${PACKAGE}/${MODULE}/skipstone android-tests
+          if [ -d plugins/outputs/${PACKAGE}/${MODULE}/destination/skipstone ]; then
+            # Swift 6.x plugin output folder
+            ln -vs plugins/outputs/${PACKAGE}/${MODULE}/destination/skipstone android-tests
+          else
+            # Swift 5.x plugin output folder
+            ln -vs plugins/outputs/${PACKAGE}/${MODULE}/skipstone android-tests
+          fi
           cd android-tests/
           # ensure we can write to the foldr
           chmod -Rf +w .

@@ -118,6 +118,9 @@ jobs:
 
           defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
 
+          # Because of https://github.com/actions/runner-images/issues/11335
+          xcodebuild -downloadPlatform iOS -buildVersion 18.2
+
       - name: Install Swift Android Toolchain
         if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
         run: |

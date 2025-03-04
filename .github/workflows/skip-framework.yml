@@ -55,6 +55,22 @@ on:
         required: false
         type: boolean
         default: true
+      emulator-api-level:
+        required: false
+        type: string
+        default: '30'
+      emulator-channel:
+        required: false
+        type: string
+        default: 'canary'
+      emulator-profile:
+        required: false
+        type: string
+        default: 'pixel'
+      emulator-target:
+        required: false
+        type: string
+        default: 'aosp_atd'
 
 jobs:
   skip-framework:
@@ -160,18 +176,18 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-30-aosp-atd-${{ steps.setup.outputs.android-arch }}
+          key: '${{ inputs.emulator-profile }}_${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}'
 
       - name: Generate Android emulator snapshot
         if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && steps.avd-cache.outputs.cache-hit != 'true' && steps.setup.outputs.android-arch == 'x86_64' }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          target: aosp_atd
-          api-level: 30
+          target: ${{ inputs.emulator-target }}
+          api-level: ${{ inputs.emulator-api-level }}
           arch: ${{ steps.setup.outputs.android-arch }}
-          channel: canary
-          profile: pixel
-          avd-name: Pixel_3a_API_30
+          channel: ${{ inputs.emulator-channel }}
+          profile: ${{ inputs.emulator-profile }}
+          avd-name: '${{ inputs.emulator-profile }}_${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}'
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
@@ -181,13 +197,12 @@ jobs:
         if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && steps.setup.outputs.android-arch == 'x86_64' }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          target: aosp_atd
-          api-level: 30
+          target: ${{ inputs.emulator-target }}
+          api-level: ${{ inputs.emulator-api-level }}
           arch: ${{ steps.setup.outputs.android-arch }}
-          channel: canary
-          profile: pixel
-          #profile: Galaxy Nexus
-          avd-name: Pixel_3a_API_30
+          channel: ${{ inputs.emulator-channel }}
+          profile: ${{ inputs.emulator-profile }}
+          avd-name: '${{ inputs.emulator-profile }}_${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}'
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: adb logcat *:E TestRunner:V & swift test --filter XCSkipTests
 

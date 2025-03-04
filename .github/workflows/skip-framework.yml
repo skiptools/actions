@@ -152,26 +152,6 @@ jobs:
           echo "Testing Skip module: ${SKIP_TEST_MODULE} from schemes list: $(xcodebuild -list -json | jq -r '.workspace.schemes[]')"
           SKIP_ZERO=1 xcodebuild test -sdk iphonesimulator -destination "platform=iOS Simulator,name=${SIMDEVICE}" -skipMacroValidation -skipPackagePluginValidation -configuration debug -scheme ${SKIP_TEST_MODULE}
 
-      - name: Prepare Android emulator
-        if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && steps.setup.outputs.android-arch == 'x86_64' }}
-        run: |
-          PACKAGE=$(swift package dump-package | jq -r '.name')
-          MODULE=$(swift package dump-package | jq -r '.targets[] | select(.type == "test") | .name' | head -n 1)
-
-          cd .build/
-          if [ -d plugins/outputs/${PACKAGE}/${MODULE}/destination/skipstone ]; then
-            # Swift 6.x plugin output folder
-            ln -vs plugins/outputs/${PACKAGE}/${MODULE}/destination/skipstone android-tests
-          else
-            # Swift 5.x plugin output folder
-            ln -vs plugins/outputs/${PACKAGE}/${MODULE}/skipstone android-tests
-          fi
-          cd android-tests/
-          # ensure we can write to the foldr
-          chmod -Rf +w .
-          # create the "gradlew" wrapper if it does not already exist
-          gradle wrapper
-
       - name: Cache Android emulator snapshot
         if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && steps.setup.outputs.android-arch == 'x86_64' }}
         uses: actions/cache@v4
@@ -186,7 +166,6 @@ jobs:
         if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && steps.avd-cache.outputs.cache-hit != 'true' && steps.setup.outputs.android-arch == 'x86_64' }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          working-directory: .build/android-tests
           target: aosp_atd
           api-level: 30
           arch: ${{ steps.setup.outputs.android-arch }}
@@ -202,7 +181,6 @@ jobs:
         if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && steps.setup.outputs.android-arch == 'x86_64' }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          working-directory: .build/android-tests
           target: aosp_atd
           api-level: 30
           arch: ${{ steps.setup.outputs.android-arch }}
@@ -211,7 +189,7 @@ jobs:
           #profile: Galaxy Nexus
           avd-name: Pixel_3a_API_30
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: adb logcat *:E TestRunner:V & ./gradlew connectedCheck --stacktrace
+          script: adb logcat *:E TestRunner:V & swift test --filter XCSkipTests
 
       - name: "Release"
         if: ${{ startsWith(github.ref, 'refs/tags/') }}

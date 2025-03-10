@@ -35,7 +35,7 @@ on:
       runs-on:
         required: false
         type: string
-        default: "['macos-13']"
+        default: "['macos-15']"
       brew-install:
         required: false
         type: string

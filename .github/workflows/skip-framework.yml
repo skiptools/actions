@@ -134,11 +134,14 @@ jobs:
         with:
           build-tests: false
 
-      - name: Setup Swift Path
-        if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
-        run:
-          # add the newly installed toolchain to the path
-          echo "${{ steps.setup-toolchain.outputs.swift-install }}/bin" >> $GITHUB_PATH
+      # do not override the local swift build path because not all
+      # packages will build with the OSS toolchain, especially if
+      # they depend on SwiftUI
+      #- name: Setup Swift Path
+      #  if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
+      #  run:
+      #    # add the newly installed toolchain to the path
+      #    echo "${{ steps.setup-toolchain.outputs.swift-install }}/bin" >> $GITHUB_PATH
 
       #- name: Check Swift Version
       #  run: swift --version

@@ -39,6 +39,9 @@ on:
       brew-install:
         required: false
         type: string
+      install-swift:
+        required: false
+        type: string
       run-export:
         required: false
         type: boolean
@@ -91,6 +94,16 @@ jobs:
           path: ~/Library/Caches/Homebrew
           key: homebrew-packages
 
+      - name: Setup Swift
+        if: ${{ inputs.install-swift == '' }}
+        uses: swift-actions/setup-swift@next
+        # Change this to @v3 once https://github.com/swift-actions/setup-swift/pull/710 lands
+        with:
+          swift-version: ${{ inputs.install-swift }}
+
+      - name: Get swift version
+        run: swift --version
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: current
@@ -104,14 +117,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-
-      - uses: swift-actions/setup-swift@next
-        # Change this to @v3 once https://github.com/swift-actions/setup-swift/pull/710 lands
-        with:
-          swift-version: "6.1"
-
-      - name: Get swift version
-        run: swift --version
 
       - name: Verify Project
         run: skip verify

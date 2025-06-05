@@ -57,10 +57,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 120
     env:     
-      #DEVELOPER_DIR: /Applications/Xcode_15.4.app/Contents/Developer
-      #DEVELOPER_DIR: /Applications/Xcode_16.0.app/Contents/Developer
-      #DEVELOPER_DIR: /Applications/Xcode_16.1.app/Contents/Developer
-      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
     steps:
       - name: Cache Homebrew packages
         uses: actions/cache@v4
@@ -80,7 +77,7 @@ jobs:
 
       # larger projects sometimes yield: Unhandled exception. System.IO.IOException: No space left on device : '/Users/runner/runners/…
       - name: Free Disk Space
-        run: sudo rm -rf /Applications/Xcode_14*
+        run: sudo rm -rf /Applications/Xcode_14*.app /Applications/Xcode_15*.app /Applications/Xcode_16.app /Applications/Xcode_16.1.app /Applications/Xcode_16_2.app /Applications/Xcode_16.3.app
 
       - uses: actions/checkout@v4
         with:

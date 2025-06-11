@@ -155,7 +155,8 @@ jobs:
         if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
         run:
           # add the newly installed toolchain to the path
-          echo "${{ steps.setup-toolchain.outputs.swift-install }}/bin" >> $GITHUB_PATH
+          #echo "${{ steps.setup-toolchain.outputs.swift-install }}/bin" >> $GITHUB_PATH
+          echo "${SWIFT_INSTALLATION}/bin" >> $GITHUB_PATH
 
       - name: Check Swift Version
         run: swift --version

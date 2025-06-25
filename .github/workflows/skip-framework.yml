@@ -110,7 +110,7 @@ jobs:
           add-job-summary: 'on-failure'
 
       - name: Install Skip
-        run: brew install skiptools/skip/skip tree ${{ inputs.brew-install }}
+        run: brew install skiptools/skip/skip tree ${{ inputs.brew-install }} || (brew update && brew install skiptools/skip/skip tree ${{ inputs.brew-install }})
 
       - run: skip doctor
 

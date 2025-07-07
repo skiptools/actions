@@ -62,6 +62,10 @@ on:
         required: false
         type: boolean
         default: false
+      run-android-native-build:
+        required: false
+        type: boolean
+        default: true
       emulator-api-level:
         required: false
         type: string
@@ -146,7 +150,7 @@ jobs:
 
       - name: Swift Android Toolchain Build
         id: setup-toolchain
-        if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
+        if: ${{ steps.setup.outputs.native-toolchain == 'required' && steps.setup.outputs.run-android-native-build != 'false' }}
         uses: skiptools/swift-android-action@v2
         with:
           build-tests: false

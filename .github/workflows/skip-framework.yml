@@ -144,8 +144,7 @@ jobs:
             test -d Sources/SkipBridge || jq -e '.pins | any(.identity == "skip-bridge")' Package.resolved >> /dev/null && echo "native-toolchain=required" >> $GITHUB_OUTPUT || echo "Swift Android toolchain not required"
 
             # need to use NDK 27 for Android tool chain build, but macos-13 defaults to NDK 26
-            ls $HOME/Library/Android/sdk/ndk/27.2.12479018
-            echo "ANDROID_NDK_HOME=$HOME/Library/Android/sdk/ndk/27.2.12479018" >> $GITHUB_ENV
+            echo "ANDROID_NDK_HOME=$(ls -1d $HOME/Library/Android/sdk/ndk/27.* | tail -n 1)" >> $GITHUB_ENV
           fi
 
       - name: Swift Android Toolchain Build

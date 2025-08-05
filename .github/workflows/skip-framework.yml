@@ -34,53 +34,39 @@ on:
       # https://github.com/ReactiveCircus/android-emulator-runner/issues/350
       runs-on:
         required: false
-        type: string
         default: "['macos-13']"
       brew-install:
         required: false
-        type: string
       install-swift:
         required: false
-        type: string
       run-export:
         required: false
-        type: boolean
         default: true
       run-local-tests:
         required: false
-        type: boolean
         default: true
       run-ios-tests:
         required: false
-        type: boolean
         default: true
       run-android-tests:
         required: false
-        type: boolean
         default: true
       android-native-disabled:
         required: false
-        type: boolean
         default: false
       run-android-native-build:
         required: false
-        type: boolean
-        default: true
       emulator-api-level:
         required: false
-        type: string
         default: '30'
       emulator-channel:
         required: false
-        type: string
         default: 'canary'
       emulator-profile:
         required: false
-        type: string
         default: 'pixel'
       emulator-target:
         required: false
-        type: string
         default: 'aosp_atd'
 
 jobs:
@@ -149,7 +135,7 @@ jobs:
 
       - name: Swift Android Toolchain Build
         id: setup-toolchain
-        if: ${{ steps.setup.outputs.native-toolchain == 'required' && steps.setup.outputs.run-android-native-build != 'false' }}
+        if: ${{ inputs.run-android-native-build == 'true' || (steps.setup.outputs.native-toolchain == 'required' && inputs.run-android-native-build != 'false') }}
         uses: skiptools/swift-android-action@v2
         with:
           build-tests: false

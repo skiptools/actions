@@ -34,39 +34,52 @@ on:
       # https://github.com/ReactiveCircus/android-emulator-runner/issues/350
       runs-on:
         required: false
+        type: string
         default: "['macos-13']"
       brew-install:
         required: false
+        type: string
       install-swift:
         required: false
+        type: string
       run-export:
         required: false
+        type: boolean
         default: true
       run-local-tests:
         required: false
+        type: boolean
         default: true
       run-ios-tests:
         required: false
+        type: boolean
         default: true
       run-android-tests:
         required: false
+        type: boolean
         default: true
       android-native-disabled:
         required: false
+        type: boolean
         default: false
       run-android-native-build:
         required: false
+        type: string
       emulator-api-level:
         required: false
+        type: string
         default: '30'
       emulator-channel:
         required: false
+        type: string
         default: 'canary'
       emulator-profile:
         required: false
+        type: string
         default: 'pixel'
       emulator-target:
         required: false
+        type: string
         default: 'aosp_atd'
 
 jobs:

@@ -167,7 +167,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${RELTAG}" -t "Release ${RELTAG}" --generate-notes skip-export/*.*
+        # Create a release or upload the assets if the release already exists
+        run: gh release create "${RELTAG}" -t "Release ${RELTAG}" --generate-notes skip-export/*.* || gh release upload "${RELTAG}" --clobber skip-export/*.*
 
       - name: Submit iOS App to App Store
         env:

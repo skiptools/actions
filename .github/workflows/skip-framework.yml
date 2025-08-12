@@ -213,14 +213,14 @@ jobs:
           SKIP_ZERO=1 xcodebuild test -sdk iphonesimulator -destination "platform=iOS Simulator,name=${SIMDEVICE}" -skipMacroValidation -skipPackagePluginValidation -configuration debug -scheme ${SKIP_TEST_MODULE}
 
       - name: Cache Android emulator snapshot
-        if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && steps.setup.outputs.android-arch == 'x86_64' }}
+        if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') }}
         uses: actions/cache@v4
         id: avd-cache
         with:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: '${{ inputs.emulator-profile }}_${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}'
+          key: '${{ inputs.emulator-profile }}_${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}_${{ matrix.os }}_${{ steps.setup.outputs.android-arch }}'
 
       - name: Generate Android emulator snapshot
         if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && steps.avd-cache.outputs.cache-hit != 'true' && steps.setup.outputs.android-arch == 'x86_64' }}

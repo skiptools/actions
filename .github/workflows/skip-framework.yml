@@ -128,7 +128,6 @@ jobs:
           cd -
 
       - run: skip doctor || true
-        if: ${{ startsWith(matrix.os, 'macos-') }}
 
       - uses: actions/checkout@v4
         with:
@@ -148,7 +147,7 @@ jobs:
           # the emulator we use should match the host architecture
           echo "android-arch=$(uname -m | sed 's/arm64/arm64-v8a/')" >> $GITHUB_OUTPUT
           # disable user confirmation to process macros
-          defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
+          defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES || true
 
           if [[ ${{ inputs.android-native-disabled }} != true ]]; then
             # check whether we use skip-bridge and so need the Android toolchain

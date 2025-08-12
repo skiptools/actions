@@ -223,7 +223,7 @@ jobs:
           key: '${{ inputs.emulator-profile }}_${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}_${{ matrix.os }}_${{ steps.setup.outputs.android-arch }}'
 
       - name: Generate Android emulator snapshot
-        if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && steps.avd-cache.outputs.cache-hit != 'true' && steps.setup.outputs.android-arch == 'x86_64' }}
+        if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && steps.avd-cache.outputs.cache-hit != 'true' }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
           target: ${{ inputs.emulator-target }}
@@ -238,7 +238,10 @@ jobs:
           script: echo "Generated AVD snapshot for caching"
 
       - name: Test Android (connected)
-        if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && steps.setup.outputs.android-arch == 'x86_64' }}
+        # Android emulator needs to be disabled for macos-14 and 15
+        # due to lack of nested virtualization on the M1 runner machines
+        # (https://github.com/ReactiveCircus/android-emulator-runner/issues/350)
+        if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && matrix.os != 'macos-14' && matrix.os != 'macos-15' }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
           target: ${{ inputs.emulator-target }}

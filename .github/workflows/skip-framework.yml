@@ -113,15 +113,18 @@ jobs:
           add-job-summary: 'on-failure'
 
       - name: Install Skip
+        if: ${{ startsWith(matrix.os, 'macos-') && inputs.install-swift != '' }}
         run: brew install skiptools/skip/skip tree ${{ inputs.brew-install }} || (brew update && brew install skiptools/skip/skip tree ${{ inputs.brew-install }})
 
       - run: skip doctor
+        if: ${{ startsWith(matrix.os, 'macos-') }}
 
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
 
       - name: Verify Project
+        if: ${{ startsWith(matrix.os, 'macos-') }}
         run: skip verify
 
       - name: Setup Environment
@@ -164,7 +167,7 @@ jobs:
         run: swift --version
 
       - name: Export project
-        if: ${{ inputs.run-export == true }}
+        if: ${{ startsWith(matrix.os, 'macos-') && inputs.run-export == true }}
         run: |
           rm -rf .build .swiftpm Package.resolved
           skip export -v -d skip-export --show-tree --sdk-path=legacy --summary-file=$GITHUB_STEP_SUMMARY
@@ -177,7 +180,7 @@ jobs:
           skip test --verbose
 
       - name: Test iOS (connected)
-        if: ${{ inputs.run-ios-tests == true && !startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ startsWith(matrix.os, 'macos-') && inputs.run-ios-tests == true && !startsWith(github.ref, 'refs/tags/') }}
         run: |
           if [ "${{ matrix.os }}" == "macos-13" ]; then
             SIMDEVICE="iPhone 15"
@@ -233,7 +236,7 @@ jobs:
           script: adb logcat *:E TestRunner:V & swift test --filter XCSkipTests
 
       - name: "Release"
-        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ startsWith(matrix.os, 'macos-') && startsWith(github.ref, 'refs/tags/') }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

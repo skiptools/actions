@@ -202,6 +202,11 @@ jobs:
           else
             SIMDEVICE="iPhone 16"
           fi
+          if [ "${{ matrix.os }}" == "macos-15" ]; then
+            # workaround for missing iPhone 16 simulator:
+            # https://github.com/actions/runner-images/issues/12758#issuecomment-3187301409
+            sudo xcode-select --switch /Applications/Xcode_16.4.app
+          fi
 
           # run the tests against the first listed scheme, which for a
           # single-module package will just be "project-name",

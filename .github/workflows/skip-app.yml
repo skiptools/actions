@@ -139,10 +139,6 @@ jobs:
           echo -n "${KEYSTORE_JKS}" | base64 --decode > Android/app/keystore.jks
           echo -n "${KEYSTORE_PROPERTIES}" | base64 --decode > Android/app/keystore.properties
 
-      - name: Android Fastlane
-        working-directory: Android
-        run: test ! -d fastlane || fastlane assemble
-
       - name: Setup Darwin App Signing
         uses: apple-actions/import-codesign-certs@v3
         if: ${{ env.APPLE_CERTIFICATES_P12 != '' }}
@@ -152,14 +148,18 @@ jobs:
           p12-file-base64: ${{ secrets.APPLE_CERTIFICATES_P12 }}
           p12-password: ${{ secrets.APPLE_CERTIFICATES_P12_PASSWORD }}
 
-      - name: Darwin Fastlane
-        working-directory: Darwin
-        run: test ! -d fastlane || FASTLANE_SKIP_ARCHIVE=YES FASTLANE_SKIP_CODESIGNING=YES FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT=300 FASTLANE_XCODEBUILD_SETTINGS_RETRIES=5 fastlane assemble
-
       - name: Export project
         run: |
           skip export -v -d skip-export --show-tree --summary-file=$GITHUB_STEP_SUMMARY
           cp -a Package.resolved skip-export/
+
+      - name: Android Fastlane
+        working-directory: Android
+        run: test ! -d fastlane || fastlane assemble
+
+      - name: Darwin Fastlane
+        working-directory: Darwin
+        run: test ! -d fastlane || FASTLANE_SKIP_ARCHIVE=YES FASTLANE_SKIP_CODESIGNING=YES FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT=300 FASTLANE_XCODEBUILD_SETTINGS_RETRIES=5 fastlane assemble
 
       - name: Run Tests
         if: ${{ inputs.run-local-tests == true && !startsWith(github.ref, 'refs/tags/') }}

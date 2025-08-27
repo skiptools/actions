@@ -150,7 +150,9 @@ jobs:
 
       - name: Export project
         run: |
-          skip export -v -d skip-export --show-tree --summary-file=$GITHUB_STEP_SUMMARY
+          # need to run twice due to a bug with duplicate resources
+          skip export -v --debug -d skip-export --show-tree --summary-file=$GITHUB_STEP_SUMMARY
+          skip export -v --release -d skip-export --show-tree --summary-file=$GITHUB_STEP_SUMMARY
           cp -a Package.resolved skip-export/
 
       - name: Android Fastlane

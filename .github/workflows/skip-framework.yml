@@ -68,19 +68,19 @@ on:
       emulator-api-level:
         required: false
         type: string
-        default: '30'
+        default: '28'
       emulator-channel:
         required: false
         type: string
-        default: 'canary'
+        default: 'stable'
       emulator-profile:
         required: false
         type: string
-        default: 'pixel'
+        default: 'Nexus 4'
       emulator-target:
         required: false
         type: string
-        default: 'aosp_atd'
+        default: 'default'
 
 jobs:
   skip-framework:

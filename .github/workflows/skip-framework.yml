@@ -76,7 +76,7 @@ on:
       emulator-profile:
         required: false
         type: string
-        default: 'Nexus 4'
+        default: 'Nexus 5X'
       emulator-target:
         required: false
         type: string
@@ -241,7 +241,7 @@ jobs:
           avd-name: '${{ inputs.emulator-profile }}_${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}'
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: false
+          disable-animations: true
           script: echo "Generated AVD snapshot for caching"
 
       - name: Test Android (connected)
@@ -258,6 +258,7 @@ jobs:
           profile: ${{ inputs.emulator-profile }}
           avd-name: '${{ inputs.emulator-profile }}_${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}'
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
           script: adb logcat *:E TestRunner:V & swift test --filter XCSkipTests
 
       - name: "Release"

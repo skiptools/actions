@@ -76,7 +76,7 @@ on:
       emulator-profile:
         required: false
         type: string
-        default: 'Nexus 5X'
+        default: 'Nexus 4'
       emulator-target:
         required: false
         type: string
@@ -238,7 +238,7 @@ jobs:
           arch: ${{ steps.setup.outputs.android-arch }}
           channel: ${{ inputs.emulator-channel }}
           profile: ${{ inputs.emulator-profile }}
-          avd-name: '${{ inputs.emulator-profile }}_${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}'
+          avd-name: '${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}'
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
@@ -256,7 +256,7 @@ jobs:
           arch: ${{ steps.setup.outputs.android-arch }}
           channel: ${{ inputs.emulator-channel }}
           profile: ${{ inputs.emulator-profile }}
-          avd-name: '${{ inputs.emulator-profile }}_${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}'
+          avd-name: '${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}'
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: adb logcat *:E TestRunner:V & swift test --filter XCSkipTests

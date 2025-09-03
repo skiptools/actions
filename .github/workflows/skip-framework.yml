@@ -227,7 +227,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: '${{ inputs.emulator-profile }}_${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}_${{ matrix.os }}_${{ steps.setup.outputs.android-arch }}'
+          key: 'avd-${{ inputs.emulator-profile }}_${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}_${{ matrix.os }}_${{ steps.setup.outputs.android-arch }}'
 
       # cache the emulator snapshot to speed up the launch, as per
       # https://github.com/ReactiveCircus/android-emulator-runner
@@ -261,6 +261,7 @@ jobs:
           channel: ${{ inputs.emulator-channel }}
           profile: ${{ inputs.emulator-profile }}
           avd-name: '${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}'
+          force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: adb logcat *:E TestRunner:V & swift test --filter XCSkipTests

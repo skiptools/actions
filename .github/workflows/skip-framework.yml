@@ -201,13 +201,12 @@ jobs:
         run: |
           if [ "${{ matrix.os }}" == "macos-13" ]; then
             SIMDEVICE="iPhone 15"
-          else
+          elif [ "${{ matrix.os }}" == "macos-14" ]; then
             SIMDEVICE="iPhone 16"
-          fi
-          if [ "${{ matrix.os }}" == "macos-15" ]; then
-            # workaround for missing iPhone 16 simulator:
-            # https://github.com/actions/runner-images/issues/12758#issuecomment-3187301409
-            sudo xcode-select --switch /Applications/Xcode_16.4.app
+          elif [ "${{ matrix.os }}" == "macos-15" ]; then
+            SIMDEVICE="iPhone 17"
+          else
+            SIMDEVICE="iPhone 18"
           fi
 
           # run the tests against the first listed scheme, which for a

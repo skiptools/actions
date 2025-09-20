@@ -206,7 +206,7 @@ jobs:
           elif [ "${{ matrix.os }}" == "macos-15" ]; then
             SIMDEVICE="iPhone 17"
           else
-            SIMDEVICE="iPhone 18"
+            SIMDEVICE="iPhone 17"
           fi
 
           # run the tests against the first listed scheme, which for a

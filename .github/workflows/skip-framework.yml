@@ -176,7 +176,7 @@ jobs:
 
           # need to hint on Linux where the toolchain is found
           if [[ "${RUNNER_OS}" == "Linux" ]]; then
-            echo "SWIFT_TOOLCHAIN_DIR=${{ steps.setup-toolchain.outputs.swift-install }}/../.." >> $GITHUB_ENV
+            echo "SWIFT_TOOLCHAIN_DIR=${SWIFT_INSTALLATION}/../.." >> $GITHUB_ENV
             echo "SWIFT_SDK_HOME=${HOME}/.config/swiftpm/swift-sdks" >> $GITHUB_ENV
           fi
 

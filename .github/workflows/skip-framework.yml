@@ -124,10 +124,10 @@ jobs:
           cd ~/bin/skiptools
           curl -fsSLO https://github.com/skiptools/skip/releases/latest/download/skip-linux.zip
           unzip skip-linux.zip
-          echo "PATH=${PWD}/skip.artifactbundle/$(uname -m)-swift-linux-musl:${PATH}" >> $GITHUB_ENV
+          echo "PATH=${PWD}/skip.artifactbundle/$(uname -m)-swift-linux-musl:${PATH}:${ANDROID_HOME}/platform-tools" >> $GITHUB_ENV
           cd -
 
-      - run: skip doctor || true
+      - run: skip doctor
 
       - uses: actions/checkout@v4
         with:
@@ -147,7 +147,9 @@ jobs:
           # the emulator we use should match the host architecture
           echo "android-arch=$(uname -m | sed 's/arm64/arm64-v8a/')" >> $GITHUB_OUTPUT
           # disable user confirmation to process macros
-          defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES || true
+          if [[ "${RUNNER_OS}" == "macOS" ]]; then
+            defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
+          fi
 
           if [[ ${{ inputs.android-native-disabled }} != true ]]; then
             # check whether we use skip-bridge and so need the Android toolchain
@@ -169,16 +171,22 @@ jobs:
 
       - name: Setup Swift Path
         if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
-        run:
+        run: |
           # add the newly installed toolchain to the path
           #echo "${{ steps.setup-toolchain.outputs.swift-install }}/bin" >> $GITHUB_PATH
           echo "${SWIFT_INSTALLATION}/bin" >> $GITHUB_PATH
+
+          # need to hint on Linux where the toolchain is found
+          if [[ "${RUNNER_OS}" == "Linux" ]]; then
+            echo "SWIFT_TOOLCHAIN_DIR=${SWIFT_INSTALLATION}/../.." >> $GITHUB_ENV
+            #echo "SWIFT_SDK_HOME=${HOME}/.config/swiftpm/swift-sdks" >> $GITHUB_ENV
+          fi
 
       - name: Check Swift Version
         run: swift --version
 
       - name: Export project
-        if: ${{ startsWith(matrix.os, 'macos-') && inputs.run-export == true }}
+        if: ${{ inputs.run-export == true }}
         run: |
           rm -rf .build .swiftpm Package.resolved
           skip export -v -d skip-export --show-tree --sdk-path=legacy --summary-file=$GITHUB_STEP_SUMMARY

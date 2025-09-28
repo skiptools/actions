@@ -52,7 +52,12 @@ runs:
           defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES
           defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
         elif [ ${RUNNER_OS} == 'Linux' ]; then
-          SKIP_HOME=${XDG_CONFIG_HOME:-${HOME}/.}/skiptools
+          if [[ -d "${XDG_CONFIG_HOME}" ]]; then
+            SKIP_HOME=${XDG_CONFIG_HOME}/skiptools
+          else
+            SKIP_HOME=${HOME}/.skiptools
+          fi
+
           mkdir -p ${SKIP_HOME}
           cd ${SKIP_HOME}
           SKIP_DOWNLOAD_BASE="https://github.com/skiptools/skip/releases"

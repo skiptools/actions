@@ -13,23 +13,13 @@ name: 'Skip Actions CI'
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
   pull_request:
 jobs:
   skip-checkup:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ['macos-latest', 'ubuntu-latest']
-    runs-on: ${{ matrix.os }}
+    runs-on: 'macos-latest'
     steps:
-      - uses: skiptools/actions/setup-skip@$v1
+      - uses: skiptools/actions/setup-skip@v1
       - run: skip checkup
-
-      - uses: skiptools/swift-android-action@v2
-        with:
-          build-package: false
-      - run: skip checkup --native
 ```
 
 

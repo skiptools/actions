@@ -108,33 +108,13 @@ jobs:
       - name: Get swift version
         run: swift --version
 
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: current
-          add-job-summary: 'on-failure'
-
-      - name: Install Skip (macOS)
-        if: ${{ startsWith(matrix.os, 'macos-') }}
-        run: brew install skiptools/skip/skip tree ${{ inputs.brew-install }} || (brew update && brew install skiptools/skip/skip tree ${{ inputs.brew-install }})
-
-      - name: Install Skip (Ubuntu)
-        if: ${{ startsWith(matrix.os, 'ubuntu-') }}
-        run: |
-          mkdir -p ~/bin/skiptools
-          cd ~/bin/skiptools
-          curl -fsSLO https://github.com/skiptools/skip/releases/latest/download/skip-linux.zip
-          unzip skip-linux.zip
-          echo "PATH=${PWD}/skip.artifactbundle/$(uname -m)-swift-linux-musl:${PATH}:${ANDROID_HOME}/platform-tools" >> $GITHUB_ENV
-          cd -
-
-      - run: skip doctor
-
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
 
-      - name: Verify Project
-        run: skip verify
+      - uses: actions/setup-skip
+        with:
+          verify-project: '.'
 
       - name: Setup Environment
         id: setup

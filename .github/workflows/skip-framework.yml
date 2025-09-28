@@ -100,7 +100,7 @@ jobs:
 
       - name: Setup Swift
         if: ${{ inputs.install-swift != '' }}
-        uses: ./swift-actions/setup-swift@next
+        uses: swift-actions/setup-swift@next
         # Change this to @v3 once https://github.com/swift-actions/setup-swift/pull/710 lands
         with:
           swift-version: ${{ inputs.install-swift }}
@@ -112,7 +112,7 @@ jobs:
         with:
           submodules: 'recursive'
 
-      - uses: actions/setup-skip
+      - uses: ./actions/setup-skip
         with:
           verify-project: '.'
 

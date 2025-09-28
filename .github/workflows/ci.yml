@@ -12,7 +12,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: skiptools/actions/setup-skip@setup-skip
+      - uses: skiptools/actions/setup-skip@skip-action
       - run: skip checkup
       - uses: skiptools/swift-android-action@v2
         with:

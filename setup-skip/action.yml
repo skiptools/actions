@@ -39,6 +39,7 @@ runs:
         swift-version: ${{ inputs.swift-version }}
 
     - name: Install Skip
+      shell: bash
       run: |
         if [ ${RUNNER_OS} == 'macOS' ]; then
           brew install skiptools/skip/skip
@@ -68,9 +69,11 @@ runs:
 
     - name: Skip Doctor
       if: ${{ inputs.run-doctor == 'true' }}
+      shell: bash
       run: skip doctor
 
     - name: Skip Verify Project
       if: ${{ inputs.verify-project != 'verify-project' }}
+      shell: bash
       run: skip verify --project ${{ inputs.verify-project }}
 

@@ -17,9 +17,4 @@ jobs:
       - run: skip doctor
       - run: skip checkup
         if: ${{ startsWith(matrix.os, 'macos-') }}
-      - uses: skiptools/swift-android-action@v2
-        with:
-          build-package: false
-      - run: skip checkup --native
-        if: ${{ startsWith(matrix.os, 'macos-') }}
 

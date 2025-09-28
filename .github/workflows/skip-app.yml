@@ -65,16 +65,6 @@ jobs:
           path: ~/Library/Caches/Homebrew
           key: homebrew-packages
 
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: current
-          add-job-summary: 'on-failure'
-
-      - name: Install Skip
-        run: brew install skiptools/skip/skip tree ${{ inputs.brew-install }} || (brew update && brew install skiptools/skip/skip tree ${{ inputs.brew-install }})
-
-      - run: skip doctor
-
       # larger projects sometimes yield: Unhandled exception. System.IO.IOException: No space left on device : '/Users/runner/runners/…
       - name: Free Disk Space
         run: sudo rm -rf /Applications/Xcode_14*.app /Applications/Xcode_15*.app /Applications/Xcode_16.app /Applications/Xcode_16.1.app /Applications/Xcode_16_2.app /Applications/Xcode_16.3.app
@@ -82,6 +72,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+
+      - uses: skiptools/actions/setup-skip@v1
+        with:
+          verify-project: '.'
 
       - name: Setup
         id: setup
@@ -117,8 +111,6 @@ jobs:
           # presume the native toolchain 
           yq -e '.skip.mode' Sources/*/Skip/skip.yml >> /dev/null && echo "native-toolchain=required" >> $GITHUB_OUTPUT || echo "Native toolchain not needed"
 
-          defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
-
       - name: Install Swift Android Toolchain
         if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
         run: |
@@ -126,9 +118,6 @@ jobs:
           # Add the toolchain to the SKIP_SWIFT_PATH environment
           # that is used by the skip tool when forking Swift
           #echo "SKIP_SWIFT_PATH=${HOME}/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/swift" >> $GITHUB_ENV
-
-      - name: Verify Skip App
-        run: skip verify || skip verify --verbose
 
       - name: Setup Android App Signing
         if: ${{ env.KEYSTORE_PROPERTIES != '' }}

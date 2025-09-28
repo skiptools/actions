@@ -1,0 +1,92 @@
+name: 'Setup Skip'
+description: 'Installs and condifures the Skip development environment'
+branding:
+  icon: 'box'
+  color: 'blue'
+
+inputs:
+  skip-version:
+    description: 'The version of the Skip toolchain to install'
+    required: true
+    default: 'latest'
+  run-doctor:
+    description: 'Whether to run skip doctor'
+    required: false
+    default: 'true'
+  verify-project:
+    description: 'Path to the project to verify'
+    required: false
+    default: ''
+  swift-version:
+    description: 'Version of Swift to install'
+    required: false
+    default: ''
+  gradle-version:
+    description: 'Version of Gradle to setup'
+    required: false
+    default: 'current'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Gradle
+      if: ${{ inputs.gradle-version != '' && inputs.gradle-version != 'none' }}
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: ${{ inputs.gradle-version }}
+        add-job-summary: 'on-failure'
+
+    - name: Install Swift
+      if: ${{ inputs.swift-version != '' }}
+      # TODO: Change this to @v3 once https://github.com/swift-actions/setup-swift/pull/710 lands
+      uses: swift-actions/setup-swift@next
+      with:
+        swift-version: ${{ inputs.swift-version }}
+
+    - name: Install Skip
+      shell: bash
+      run: |
+        if [ ${RUNNER_OS} == 'macOS' ]; then
+          brew install skiptools/skip/skip
+          # enable running the Skip plugin from xcodebuild without user prompt
+          defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES
+          defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
+        elif [ ${RUNNER_OS} == 'Linux' ]; then
+          if [[ -d "${XDG_CONFIG_HOME}" ]]; then
+            SKIP_HOME=${XDG_CONFIG_HOME}/skiptools
+          else
+            SKIP_HOME=${HOME}/.skiptools
+          fi
+
+          mkdir -p ${SKIP_HOME}
+          cd ${SKIP_HOME}
+          SKIP_DOWNLOAD_BASE="https://github.com/skiptools/skip/releases"
+          #SKIP_DOWNLOAD_BASE="https://source.skip.tools/skip/releases"
+          if [[ '${{ inputs.skip-version }}' == 'latest' ]]; then
+            SKIP_DOWNLOAD_URL="${SKIP_DOWNLOAD_BASE}/latest/download/skip-linux.zip"
+          else
+            SKIP_DOWNLOAD_URL="${SKIP_DOWNLOAD_BASE}/download/${{ inputs.skip-version }}/skip-linux.zip"
+          fi
+          curl -fsSLO --retry 8 --retry-connrefused "${SKIP_DOWNLOAD_URL}"
+
+          unzip skip-linux.zip
+          echo "${PWD}/skip.artifactbundle/$(uname -m)-swift-linux-musl" >> $GITHUB_PATH
+
+          # also need adb in the PATH for skip doctor to pass
+          echo "${ANDROID_HOME}/platform-tools" >> $GITHUB_PATH
+          cd -
+        else
+          echo "::error::Unsupported platform: ${RUNNER_OS}"
+          exit 1
+        fi
+
+    - name: Skip Doctor
+      if: ${{ inputs.run-doctor == 'true' }}
+      shell: bash
+      run: skip doctor
+
+    - name: Skip Verify Project
+      if: ${{ inputs.verify-project != '' }}
+      shell: bash
+      run: skip verify --project ${{ inputs.verify-project }}
+

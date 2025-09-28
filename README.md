@@ -4,6 +4,35 @@ This repository host shared workflows that can be used
 by Skip framework and app projects to build, test, and
 deploy standard Skip projects.
 
+## Skip Setup
+
+You can setup Skip as part of your own workflow with:
+
+```yaml
+name: 'Skip Actions CI'
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+  pull_request:
+jobs:
+  skip-checkup:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['macos-latest', 'ubuntu-latest']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: skiptools/actions/setup-skip@$v1
+      - run: skip checkup
+
+      - uses: skiptools/swift-android-action@v2
+        with:
+          build-package: false
+      - run: skip checkup --native
+```
+
+
 ## Frameworks
 
 For building and testing a framework,

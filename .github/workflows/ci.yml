@@ -1,0 +1,20 @@
+name: 'Skip Actions CI'
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+  pull_request:
+jobs:
+  setup-skip-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['macos-latest', 'ubuntu-latest']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./setup-skip
+      - run: skip doctor
+      - run: skip checkup
+        if: ${{ startsWith(matrix.os, 'macos-') }}
+

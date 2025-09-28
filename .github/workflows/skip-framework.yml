@@ -108,33 +108,13 @@ jobs:
       - name: Get swift version
         run: swift --version
 
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: current
-          add-job-summary: 'on-failure'
-
-      - name: Install Skip (macOS)
-        if: ${{ startsWith(matrix.os, 'macos-') }}
-        run: brew install skiptools/skip/skip tree ${{ inputs.brew-install }} || (brew update && brew install skiptools/skip/skip tree ${{ inputs.brew-install }})
-
-      - name: Install Skip (Ubuntu)
-        if: ${{ startsWith(matrix.os, 'ubuntu-') }}
-        run: |
-          mkdir -p ~/bin/skiptools
-          cd ~/bin/skiptools
-          curl -fsSLO https://github.com/skiptools/skip/releases/latest/download/skip-linux.zip
-          unzip skip-linux.zip
-          echo "PATH=${PWD}/skip.artifactbundle/$(uname -m)-swift-linux-musl:${PATH}:${ANDROID_HOME}/platform-tools" >> $GITHUB_ENV
-          cd -
-
-      - run: skip doctor
-
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
 
-      - name: Verify Project
-        run: skip verify
+      - uses: skiptools/actions/setup-skip@v1
+        with:
+          verify-project: '.'
 
       - name: Setup Environment
         id: setup
@@ -146,11 +126,6 @@ jobs:
           echo "RELTAG=${TAG:-'dev'}" >> $GITHUB_ENV
           # the emulator we use should match the host architecture
           echo "android-arch=$(uname -m | sed 's/arm64/arm64-v8a/')" >> $GITHUB_OUTPUT
-          # disable user confirmation to process macros
-          if [[ "${RUNNER_OS}" == "macOS" ]]; then
-            defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
-          fi
-
           if [[ ${{ inputs.android-native-disabled }} != true ]]; then
             # check whether we use skip-bridge and so need the Android toolchain
             SKIP_BRIDGE=1 swift package resolve
@@ -165,7 +140,7 @@ jobs:
       - name: Swift Android Toolchain Build
         id: setup-toolchain
         if: ${{ inputs.run-android-native-build == 'true' || (steps.setup.outputs.native-toolchain == 'required' && inputs.run-android-native-build != 'false') }}
-        uses: skiptools/swift-android-action@v2
+        uses: skiptools/swift-android-action@main
         with:
           build-tests: false
 
@@ -175,12 +150,6 @@ jobs:
           # add the newly installed toolchain to the path
           #echo "${{ steps.setup-toolchain.outputs.swift-install }}/bin" >> $GITHUB_PATH
           echo "${SWIFT_INSTALLATION}/bin" >> $GITHUB_PATH
-
-          # need to hint on Linux where the toolchain is found
-          if [[ "${RUNNER_OS}" == "Linux" ]]; then
-            echo "SWIFT_TOOLCHAIN_DIR=${SWIFT_INSTALLATION}/../.." >> $GITHUB_ENV
-            #echo "SWIFT_SDK_HOME=${HOME}/.config/swiftpm/swift-sdks" >> $GITHUB_ENV
-          fi
 
       - name: Check Swift Version
         run: swift --version

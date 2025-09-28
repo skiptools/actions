@@ -124,7 +124,7 @@ jobs:
           cd ~/bin/skiptools
           curl -fsSLO https://github.com/skiptools/skip/releases/latest/download/skip-linux.zip
           unzip skip-linux.zip
-          echo "PATH=${PWD}/skip.artifactbundle/$(uname -m)-swift-linux-musl:${PATH}:${ANDROID_HOME}/platform_tools" >> $GITHUB_ENV
+          echo "PATH=${PWD}/skip.artifactbundle/$(uname -m)-swift-linux-musl:${PATH}:${ANDROID_HOME}/platform-tools" >> $GITHUB_ENV
           cd -
 
       - run: skip doctor

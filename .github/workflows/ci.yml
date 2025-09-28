@@ -1,0 +1,21 @@
+name: 'Skip Actions CI'
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+  pull_request:
+jobs:
+  install-sdk:
+    strategy:
+      matrix:
+        os: ['macos-13', 'macos-26', 'ubuntu-24.04']
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: skiptools/actions/setup-skip@${{ github.ref }}
+      - run: skip checkup
+      - uses: skiptools/swift-android-action@v2
+        with:
+          build-package: false
+      - run: skip checkup --native
+

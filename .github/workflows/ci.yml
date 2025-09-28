@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: ./setup-skip
+      - uses: setup-skip
       - run: skip checkup
         if: ${{ startsWith(matrix.os, 'macos-') }}
       - uses: skiptools/swift-android-action@v2

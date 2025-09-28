@@ -7,9 +7,9 @@ on:
 jobs:
   install-sdk:
     strategy:
+      fail-fast: false
       matrix:
-        os: ['macos-13', 'macos-26', 'ubuntu-24.04']
-
+        os: ['macos-latest', 'ubuntu-latest']
     runs-on: ${{ matrix.os }}
     steps:
       - uses: skiptools/actions/setup-skip@skip-action

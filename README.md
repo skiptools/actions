@@ -18,6 +18,7 @@ on:
 jobs:
   skip-checkup:
     strategy:
+      fail-fast: false
       matrix:
         os: ['macos-latest', 'ubuntu-latest']
     runs-on: ${{ matrix.os }}

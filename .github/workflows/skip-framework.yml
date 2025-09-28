@@ -100,7 +100,7 @@ jobs:
 
       - name: Setup Swift
         if: ${{ inputs.install-swift != '' }}
-        uses: swift-actions/setup-swift@next
+        uses: ./swift-actions/setup-swift@next
         # Change this to @v3 once https://github.com/swift-actions/setup-swift/pull/710 lands
         with:
           swift-version: ${{ inputs.install-swift }}
@@ -126,11 +126,6 @@ jobs:
           echo "RELTAG=${TAG:-'dev'}" >> $GITHUB_ENV
           # the emulator we use should match the host architecture
           echo "android-arch=$(uname -m | sed 's/arm64/arm64-v8a/')" >> $GITHUB_OUTPUT
-          # disable user confirmation to process macros
-          if [[ "${RUNNER_OS}" == "macOS" ]]; then
-            defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
-          fi
-
           if [[ ${{ inputs.android-native-disabled }} != true ]]; then
             # check whether we use skip-bridge and so need the Android toolchain
             SKIP_BRIDGE=1 swift package resolve

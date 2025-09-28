@@ -117,8 +117,6 @@ jobs:
           # presume the native toolchain 
           yq -e '.skip.mode' Sources/*/Skip/skip.yml >> /dev/null && echo "native-toolchain=required" >> $GITHUB_OUTPUT || echo "Native toolchain not needed"
 
-          defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
-
       - name: Install Swift Android Toolchain
         if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
         run: |

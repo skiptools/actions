@@ -223,6 +223,7 @@ jobs:
           channel: ${{ inputs.emulator-channel }}
           profile: ${{ inputs.emulator-profile }}
           avd-name: '${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}'
+          disk-size: 4096M
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
@@ -241,6 +242,7 @@ jobs:
           channel: ${{ inputs.emulator-channel }}
           profile: ${{ inputs.emulator-profile }}
           avd-name: '${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}'
+          disk-size: 4096M
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true

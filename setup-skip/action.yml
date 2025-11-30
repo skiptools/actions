@@ -31,7 +31,7 @@ runs:
   steps:
     - name: Install Gradle
       if: ${{ inputs.gradle-version != '' && inputs.gradle-version != 'none' }}
-      uses: gradle/actions/setup-gradle@v4
+      uses: gradle/actions/setup-gradle@4d9f0ba0025fe599b4ebab900eb7f3a1d93ef4c2 # @v5
       with:
         gradle-version: ${{ inputs.gradle-version }}
         add-job-summary: 'on-failure'
@@ -39,7 +39,7 @@ runs:
     - name: Install Swift
       if: ${{ inputs.swift-version != '' }}
       # TODO: Change this to @v3 once https://github.com/swift-actions/setup-swift/pull/710 lands
-      uses: swift-actions/setup-swift@next
+      uses: swift-actions/setup-swift@364295d9c23900ce04d4e5cc708387921b4e50f9 # @next
       with:
         swift-version: ${{ inputs.swift-version }}
 

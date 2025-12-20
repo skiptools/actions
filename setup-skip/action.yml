@@ -58,7 +58,7 @@ runs:
 
     - name: Initialize swiftly
       shell: bash
-      run: swiftly init
+      run: swiftly init --skip-install --assume-yes
 
     - name: Skip Doctor
       if: ${{ inputs.run-doctor == 'true' }}

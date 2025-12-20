@@ -56,6 +56,10 @@ runs:
           defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
         fi
 
+    - name: Run swiftly
+      shell: bash
+      run: swiftly --version
+
     - name: Skip Doctor
       if: ${{ inputs.run-doctor == 'true' }}
       shell: bash

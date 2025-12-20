@@ -29,6 +29,10 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Install Homebrew
+      id: set-up-homebrew
+      uses: Homebrew/actions/setup-homebrew@0da5e123f3a792967ae460199673d87e2bfa257d # @main
+
     - name: Install Gradle
       if: ${{ inputs.gradle-version != '' && inputs.gradle-version != 'none' }}
       uses: gradle/actions/setup-gradle@4d9f0ba0025fe599b4ebab900eb7f3a1d93ef4c2 # @v5
@@ -38,43 +42,19 @@ runs:
 
     - name: Install Swift
       if: ${{ inputs.swift-version != '' }}
-      # TODO: Change this to @v3 once https://github.com/swift-actions/setup-swift/pull/710 lands
-      uses: swift-actions/setup-swift@364295d9c23900ce04d4e5cc708387921b4e50f9 # @next
+      uses: swift-actions/setup-swift@7e293214cba9e9225c93ce3267f17f6efdb656a8 # @next
       with:
         swift-version: ${{ inputs.swift-version }}
 
     - name: Install Skip
       shell: bash
       run: |
+        brew install skiptools/skip/skip
         if [ ${RUNNER_OS} == 'macOS' ]; then
-          brew install skiptools/skip/skip
           # enable running the Skip plugin from xcodebuild without user prompt
           defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES
           defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
         elif [ ${RUNNER_OS} == 'Linux' ]; then
-          if [[ -d "${XDG_CONFIG_HOME}" ]]; then
-            SKIP_HOME=${XDG_CONFIG_HOME}/skiptools
-          else
-            SKIP_HOME=${HOME}/.skiptools
-          fi
-
-          mkdir -p ${SKIP_HOME}
-          cd ${SKIP_HOME}
-          SKIP_DOWNLOAD_BASE="https://github.com/skiptools/skip/releases"
-          #SKIP_DOWNLOAD_BASE="https://source.skip.tools/skip/releases"
-          if [[ '${{ inputs.skip-version }}' == 'latest' ]]; then
-            SKIP_DOWNLOAD_URL="${SKIP_DOWNLOAD_BASE}/latest/download/skip-linux.zip"
-          else
-            SKIP_DOWNLOAD_URL="${SKIP_DOWNLOAD_BASE}/download/${{ inputs.skip-version }}/skip-linux.zip"
-          fi
-          curl -fsSLO --retry 8 --retry-connrefused "${SKIP_DOWNLOAD_URL}"
-
-          unzip skip-linux.zip
-          echo "${PWD}/skip.artifactbundle/$(uname -m)-swift-linux-musl" >> $GITHUB_PATH
-
-          # also need adb in the PATH for skip doctor to pass
-          echo "${ANDROID_HOME}/platform-tools" >> $GITHUB_PATH
-          cd -
         else
           echo "::error::Unsupported platform: ${RUNNER_OS}"
           exit 1

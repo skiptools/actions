@@ -54,10 +54,6 @@ runs:
           # enable running the Skip plugin from xcodebuild without user prompt
           defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES
           defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
-        elif [ ${RUNNER_OS} == 'Linux' ]; then
-        else
-          echo "::error::Unsupported platform: ${RUNNER_OS}"
-          exit 1
         fi
 
     - name: Skip Doctor

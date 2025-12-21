@@ -22,6 +22,40 @@ jobs:
       - run: skip checkup
 ```
 
+### setup-skip configuration options
+
+The `skiptools/setup-skip` action accepts the following inputs:
+
+```yml
+  skip-version:
+    description: 'The version of the Skip toolchain to install'
+    required: true
+    default: 'latest'
+  run-doctor:
+    description: 'Whether to run skip doctor'
+    required: false
+    default: 'true'
+  verify-project:
+    description: 'Path to the project to verify'
+    required: false
+    default: ''
+  swift-version:
+    description: 'Version of Swift to install'
+    required: false
+    default: ''
+  gradle-version:
+    description: 'Version of Gradle to setup'
+    required: false
+    default: 'current'
+  install-swift-android-sdk:
+    description: 'Whether to install the native Swift SDK for Android'
+    required: false
+    default: 'false'
+  swift-android-sdk-version:
+    description: 'Version of the Swift SDK for Android to install'
+    required: false
+    default: ''
+```
 
 ## Frameworks
 

@@ -25,6 +25,14 @@ inputs:
     description: 'Version of Gradle to setup'
     required: false
     default: 'current'
+  install-swift-android-sdk:
+    description: 'Whether to install the native Swift SDK for Android'
+    required: false
+    default: 'false'
+  swift-android-sdk-version:
+    description: 'Version of the Swift SDK for Android to install'
+    required: false
+    default: ''
 
 runs:
   using: "composite"
@@ -59,6 +67,16 @@ runs:
     - name: Initialize swiftly
       shell: bash
       run: swiftly init --skip-install --assume-yes
+
+    - name: Install Swift SDK for Android
+      if: ${{ inputs.install-swift-android-sdk == 'true' }}
+      shell: bash
+      run: |
+        if [[ ! -z "${{ inputs.swift-android-sdk-version }}" ]]; then
+          skip android sdk install --version ${{ inputs.swift-android-sdk-version }}
+        else
+          skip android sdk install
+        fi
 
     - name: Skip Doctor
       if: ${{ inputs.run-doctor == 'true' }}

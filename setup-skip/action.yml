@@ -64,6 +64,13 @@ runs:
           defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
         fi
 
+    - name: Install Toolchain Dependencies
+      run: |
+        if [ ${RUNNER_OS} == 'Linux' ]; then
+          # needed to be able to install swiftly toolchains
+          sudo apt-get -y install libcurl4-openssl-dev
+        fi
+
     - name: Initialize swiftly
       shell: bash
       run: swiftly init --skip-install --assume-yes

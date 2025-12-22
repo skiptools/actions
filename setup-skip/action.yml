@@ -65,6 +65,7 @@ runs:
         fi
 
     - name: Install Toolchain Dependencies
+      shell: bash
       run: |
         if [ ${RUNNER_OS} == 'Linux' ]; then
           # needed to be able to install swiftly toolchains

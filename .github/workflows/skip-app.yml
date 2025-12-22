@@ -59,15 +59,10 @@ jobs:
     env:     
       DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
     steps:
-      - name: Cache Homebrew packages
-        uses: actions/cache@v5
-        with:
-          path: ~/Library/Caches/Homebrew
-          key: homebrew-packages
-
       # larger projects sometimes yield: Unhandled exception. System.IO.IOException: No space left on device : '/Users/runner/runners/…
       - name: Free Disk Space
-        run: sudo rm -rf /Applications/Xcode_14*.app /Applications/Xcode_15*.app /Applications/Xcode_16.app /Applications/Xcode_16.1.app /Applications/Xcode_16_2.app /Applications/Xcode_16.3.app
+        # need to free disk space or the emulator fails to launch sometimes
+        run: sudo rm -rf /Applications/Xcode_1[4567]*.app /opt/microsoft /opt/google /opt/az /usr/share/miniconda /usr/share/az* /usr/share/glade* /usr/local/share/chromium /usr/local/share/powershell /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/julia* /opt/hostedtoolcache/CodeQL /usr/local/share/boost
 
       - uses: actions/checkout@v6
         with:

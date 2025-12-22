@@ -9,7 +9,7 @@
 # An example invocation script is as follows, which runs for 
 # every push, every PR, every semver tag, and every day at noon GMT:
 #
-# name: skipapp
+# name: skiplib
 # on:
 #   push:
 #     branches: '*'
@@ -91,21 +91,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     steps:
-      - name: Cache Homebrew packages
-        if: ${{ runner.os == 'macOS' }}
-        uses: actions/cache@v5
-        with:
-          path: ~/Library/Caches/Homebrew
-          key: homebrew-packages
-
       - name: Free Disk Space
-        if: runner.os == 'Linux'
         # need to free disk space or the emulator fails to launch sometimes
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        run: sudo rm -rf /Applications/Xcode_1[4567]*.app /opt/microsoft /opt/google /opt/az /usr/share/miniconda /usr/share/az* /usr/share/glade* /usr/local/share/chromium /usr/local/share/powershell /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/julia* /opt/hostedtoolcache/CodeQL /usr/local/share/boost
 
       - uses: actions/checkout@v6
         with:

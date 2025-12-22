@@ -15,6 +15,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: ./setup-skip
       - run: skip doctor
+      - run: skip android sdk install --version nightly-main --verbose
       - run: skip checkup
         if: ${{ startsWith(matrix.os, 'macos-') }}
 

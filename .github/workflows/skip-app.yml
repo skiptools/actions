@@ -63,10 +63,6 @@ jobs:
         with:
           submodules: 'recursive'
 
-      - uses: skiptools/actions/setup-skip@v1
-        with:
-          verify-project: '.'
-
       - name: Setup
         id: setup
         env:
@@ -99,15 +95,13 @@ jobs:
 
           # check whether any of the skip.yml files in the project
           # presume the native toolchain 
-          yq -e '.skip.mode' Sources/*/Skip/skip.yml >> /dev/null && echo "native-toolchain=required" >> $GITHUB_OUTPUT || echo "Native toolchain not needed"
+          yq -e '.skip.mode' Sources/*/Skip/skip.yml >> /dev/null && echo "skip-fuse=true" >> $GITHUB_OUTPUT || echo "Native toolchain not needed"
 
-      - name: Install Swift Android Toolchain
-        if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
-        run: |
-          brew install skiptools/skip/swift-android-toolchain@6.1
-          # Add the toolchain to the SKIP_SWIFT_PATH environment
-          # that is used by the skip tool when forking Swift
-          #echo "SKIP_SWIFT_PATH=${HOME}/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/swift" >> $GITHUB_ENV
+      - uses: skiptools/actions/setup-skip@v1
+        with:
+          verify-project: '.'
+          install-swift-android-sdk: ${{ steps.setup.outputs.skip-fuse }}
+          swift-android-sdk-version: nightly-6.3
 
       - name: Setup Android App Signing
         if: ${{ env.KEYSTORE_PROPERTIES != '' }}

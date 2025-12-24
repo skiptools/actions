@@ -101,14 +101,6 @@ jobs:
         with:
           submodules: 'recursive'
 
-      - uses: skiptools/actions/setup-skip@v1
-        with:
-          swift-version: ${{ inputs.install-swift }}
-          verify-project: '.'
-
-      - name: Get swift version
-        run: swift --version
-
       - name: Setup Environment
         id: setup
         run: |
@@ -122,30 +114,22 @@ jobs:
           if [[ ${{ inputs.android-native-disabled }} != true ]]; then
             # check whether we use skip-bridge and so need the Android toolchain
             SKIP_BRIDGE=1 swift package resolve
-            test -d Sources/SkipBridge || jq -e '.pins | any(.identity == "skip-bridge")' Package.resolved >> /dev/null && echo "native-toolchain=required" >> $GITHUB_OUTPUT || echo "Swift Android toolchain not required"
-
-            # need to use NDK 27 for Android tool chain build, but macos-13 defaults to NDK 26
-            if [ "${{ matrix.os }}" == "macos-13" ]; then
-              echo "ANDROID_NDK_HOME=$(ls -1d $HOME/Library/Android/sdk/ndk/27.* | tail -n 1)" >> $GITHUB_ENV
-            fi
+            test -d Sources/SkipBridge || jq -e '.pins | any(.identity == "skip-bridge")' Package.resolved >> /dev/null && echo "skip-fuse=true" >> $GITHUB_OUTPUT || echo "Swift Android toolchain not required"
           fi
 
-      - name: Swift Android Toolchain Build
-        id: setup-toolchain
-        if: ${{ inputs.run-android-native-build == 'true' || (steps.setup.outputs.native-toolchain == 'required' && inputs.run-android-native-build != 'false') }}
-        uses: skiptools/swift-android-action@main
+      - uses: skiptools/actions/setup-skip@v1
         with:
-          build-tests: false
+          verify-project: '.'
+          swift-version: ${{ inputs.install-swift }}
+          install-swift-android-sdk: ${{ steps.setup.outputs.skip-fuse }}
+          swift-android-sdk-version: nightly-6.3
 
-      - name: Setup Swift Path
-        if: ${{ steps.setup.outputs.native-toolchain == 'required' }}
-        run: |
-          # add the newly installed toolchain to the path
-          #echo "${{ steps.setup-toolchain.outputs.swift-install }}/bin" >> $GITHUB_PATH
-          echo "${SWIFT_INSTALLATION}/bin" >> $GITHUB_PATH
-
-      - name: Check Swift Version
+      - name: Get swift version
         run: swift --version
+
+      - name: Swift Android Toolchain Build
+        if: ${{ inputs.run-android-native-build == 'true' || (steps.setup.outputs.skip-fuse == 'true' && inputs.run-android-native-build != 'false') }}
+        run: skip android build --verbose
 
       - name: Export project
         if: ${{ inputs.run-export == true }}

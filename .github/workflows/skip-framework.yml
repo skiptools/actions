@@ -91,11 +91,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     env:     
-      DEVELOPER_DIR: /Applications/Xcode_26.1.app/Contents/Developer
+      #DEVELOPER_DIR: /Applications/Xcode_26.1.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
     steps:
       - name: Free Disk Space
         # need to free disk space or the emulator fails to launch sometimes
-        run: sudo rm -rf /Applications/Xcode_1[4567]*.app /opt/microsoft /opt/google /opt/az /usr/share/miniconda /usr/share/az* /usr/share/glade* /usr/local/share/chromium /usr/local/share/powershell /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/julia* /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+        run: sudo rm -rf /Applications/Xcode_1[45]*.app /Applications/Xcode_16.[0123].app /opt/microsoft /opt/google /opt/az /usr/share/miniconda /usr/share/az* /usr/share/glade* /usr/local/share/chromium /usr/local/share/powershell /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/julia* /opt/hostedtoolcache/CodeQL /usr/local/share/boost
 
       - uses: actions/checkout@v6
         with:

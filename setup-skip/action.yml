@@ -86,6 +86,10 @@ runs:
           skip android sdk install
         fi
 
+        # workaround fail when ANDROID_NDK_ROOT is set
+        # see https://github.com/finagolfin/swift-android-sdk/issues/207
+        echo "ANDROID_NDK_ROOT=" >> $GITHUB_ENV
+
     - name: Skip Doctor
       if: ${{ inputs.run-doctor == 'true' }}
       shell: bash

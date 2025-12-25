@@ -118,6 +118,10 @@ jobs:
             test -d Sources/SkipBridge || jq -e '.pins | any(.identity == "skip-bridge")' Package.resolved >> /dev/null && echo "skip-fuse=true" >> $GITHUB_OUTPUT || echo "Swift Android toolchain not required"
           fi
 
+          if [[ "${{ inputs.run-android-native-build }}" == "true" ]]; then
+            echo "skip-fuse=true" >> $GITHUB_OUTPUT
+          fi
+
       - uses: skiptools/actions/setup-skip@v1
         with:
           verify-project: '.'

@@ -123,7 +123,7 @@ jobs:
           verify-project: '.'
           swift-version: ${{ inputs.install-swift }}
           install-swift-android-sdk: ${{ steps.setup.outputs.skip-fuse }}
-          swift-android-sdk-version: nightly-6.3
+          #swift-android-sdk-version: nightly-6.3
 
       - name: Get swift version
         run: swift --version

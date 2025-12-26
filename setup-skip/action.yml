@@ -33,6 +33,10 @@ inputs:
     description: 'Version of the Swift SDK for Android to install'
     required: false
     default: ''
+  verbose:
+    description: 'Whether to be verbose when running setup commands'
+    required: false
+    default: ''
 
 runs:
   using: "composite"
@@ -64,6 +68,16 @@ runs:
           defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
         fi
 
+    - name: Setup environment
+      id: setup
+      shell: bash
+      run: |
+        verbose_arg=""
+        if [[ "${{ inputs.verbose }}" ]]; then
+          verbose_arg="--verbose"
+        fi
+        echo "verbose_arg=${verbose_arg}" >> $GITHUB_OUTPUT
+
     - name: Install Toolchain Dependencies
       shell: bash
       run: |
@@ -80,11 +94,12 @@ runs:
       if: ${{ inputs.install-swift-android-sdk == 'true' }}
       shell: bash
       run: |
+        version_arg=""
         if [[ ! -z "${{ inputs.swift-android-sdk-version }}" ]]; then
-          skip android sdk install --version ${{ inputs.swift-android-sdk-version }}
-        else
-          skip android sdk install
+          version_arg="--version ${{ inputs.swift-android-sdk-version }}"
         fi
+
+        skip android sdk install ${{ steps.setup.outputs.verbose_arg }} ${version_arg}
 
         # workaround fail when ANDROID_NDK_ROOT is set
         # see https://github.com/finagolfin/swift-android-sdk/issues/207
@@ -93,10 +108,10 @@ runs:
     - name: Skip Doctor
       if: ${{ inputs.run-doctor == 'true' }}
       shell: bash
-      run: skip doctor
+      run: skip doctor ${{ steps.setup.outputs.verbose_arg }}
 
     - name: Skip Verify Project
       if: ${{ inputs.verify-project != '' }}
       shell: bash
-      run: skip verify --project ${{ inputs.verify-project }}
+      run: skip verify ${{ steps.setup.outputs.verbose_arg }} --project ${{ inputs.verify-project }}
 

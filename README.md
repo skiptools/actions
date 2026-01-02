@@ -108,6 +108,6 @@ jobs:
 To release a version and update the symbolic "v1" tag, run:
 
 ```
-git tag v1.0.0 && git push --tags && git tag -fa v1 -m "Update v1 tag" && git push origin v1 --force
+git tag v1.0.0 && git push --tags && git tag -fa v1 -m "Update v1 tag" && git push origin v1 --force && gh release create --generate-notes --latest
 ```
 

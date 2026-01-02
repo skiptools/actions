@@ -122,7 +122,7 @@ jobs:
             echo "skip-fuse=true" >> $GITHUB_OUTPUT
           fi
 
-      - uses: ./setup-skip
+      - uses: skiptools/actions/setup-skip@main
         with:
           verify-project: '.'
           swift-version: ${{ inputs.install-swift }}

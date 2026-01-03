@@ -103,6 +103,10 @@ jobs:
           install-swift-android-sdk: ${{ steps.setup.outputs.skip-fuse }}
           swift-android-sdk-version: nightly-6.3
 
+      - name: Run Tests
+        if: ${{ inputs.run-local-tests == true && !startsWith(github.ref, 'refs/tags/') }}
+        run: test ! -d Tests || skip test
+
       - name: Setup Android App Signing
         if: ${{ env.KEYSTORE_PROPERTIES != '' }}
         env:
@@ -113,7 +117,7 @@ jobs:
           echo -n "${KEYSTORE_PROPERTIES}" | base64 --decode > Android/app/keystore.properties
 
       - name: Setup Darwin App Signing
-        uses: apple-actions/import-codesign-certs@v5
+        uses: apple-actions/import-codesign-certs@v6
         if: ${{ env.APPLE_CERTIFICATES_P12 != '' }}
         env:
           APPLE_CERTIFICATES_P12: ${{ secrets.APPLE_CERTIFICATES_P12 }}
@@ -121,24 +125,39 @@ jobs:
           p12-file-base64: ${{ secrets.APPLE_CERTIFICATES_P12 }}
           p12-password: ${{ secrets.APPLE_CERTIFICATES_P12_PASSWORD }}
 
-      - name: Export project
-        run: |
-          # need to run twice due to a bug with duplicate resources
-          skip export -v --debug -d skip-export --show-tree --summary-file=$GITHUB_STEP_SUMMARY
-          skip export -v --release -d skip-export --show-tree --summary-file=$GITHUB_STEP_SUMMARY
-          cp -a Package.resolved skip-export/
-
       - name: Android Fastlane
+        if: ${{ !startsWith(github.ref, 'refs/tags/')
         working-directory: Android
         run: test ! -d fastlane || fastlane assemble
 
       - name: Darwin Fastlane
+        if: ${{ !startsWith(github.ref, 'refs/tags/')
         working-directory: Darwin
         run: test ! -d fastlane || FASTLANE_SKIP_ARCHIVE=YES FASTLANE_SKIP_CODESIGNING=YES FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT=300 FASTLANE_XCODEBUILD_SETTINGS_RETRIES=5 fastlane assemble
 
-      - name: Run Tests
-        if: ${{ inputs.run-local-tests == true && !startsWith(github.ref, 'refs/tags/') }}
-        run: test ! -d Tests || skip test || skip test -v
+      - name: Submit iOS App to App Store
+        if: ${{ startsWith(github.ref, 'refs/tags/') && env.APPLE_APPSTORE_APIKEY != '' }}
+        working-directory: Darwin
+        env:
+          APPLE_APPSTORE_APIKEY: ${{ secrets.APPLE_APPSTORE_APIKEY }}
+        run: |
+          echo -n "${{ secrets.APPLE_APPSTORE_APIKEY }}" | base64 --decode -o fastlane/apikey.json
+          fastlane release
+
+      - name: Submit Android App to Play Store
+        if: ${{ startsWith(github.ref, 'refs/tags/') && env.GOOGLE_PLAY_APIKEY != '' }}
+        env:
+          GOOGLE_PLAY_APIKEY: ${{ secrets.GOOGLE_PLAY_APIKEY }}
+        working-directory: Android
+        run: |
+          echo -n "${GOOGLE_PLAY_APIKEY}" | base64 --decode > fastlane/apikey.json
+          fastlane release
+
+      - name: Export project
+        run: |
+          #skip export -v --debug -d skip-export --show-tree --summary-file=$GITHUB_STEP_SUMMARY
+          skip export -v --release -d skip-export --show-tree --summary-file=$GITHUB_STEP_SUMMARY
+          cp -a Package.resolved skip-export/
 
       - name: "Create GitHub Release"
         if: startsWith(github.ref, 'refs/tags/')
@@ -147,29 +166,8 @@ jobs:
         # Create a release or upload the assets if the release already exists
         run: gh release create "${RELTAG}" -t "Release ${RELTAG}" --generate-notes skip-export/*.* || gh release upload "${RELTAG}" --clobber skip-export/*.*
 
-      - name: Submit iOS App to App Store
-        env:
-          APPLE_APPSTORE_APIKEY: ${{ secrets.APPLE_APPSTORE_APIKEY }}
-        if: ${{ startsWith(github.ref, 'refs/tags/') && env.APPLE_APPSTORE_APIKEY != '' }}
-        working-directory: Darwin
-        # import of provisioning profile happens from Darwin/fastlane/Fastfile get_provisioning_profile() now
-        #mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles/
-        #echo -n "${{ secrets.APPLE_MOBILEPROVISION }}" | base64 --decode -o ~/Library/MobileDevice/Provisioning\ Profiles/app.mobileprovision
-        run: |
-          echo -n "${{ secrets.APPLE_APPSTORE_APIKEY }}" | base64 --decode -o fastlane/apikey.json
-          fastlane release
-
-      - name: Submit Android App to Play Store
-        env:
-          GOOGLE_PLAY_APIKEY: ${{ secrets.GOOGLE_PLAY_APIKEY }}
-        if: ${{ startsWith(github.ref, 'refs/tags/') && env.GOOGLE_PLAY_APIKEY != '' }}
-        working-directory: Android
-        run: |
-          echo -n "${GOOGLE_PLAY_APIKEY}" | base64 --decode > fastlane/apikey.json
-          fastlane release
-
       - name: "Upload Build Artifacts"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with: 
           path: skip-export/

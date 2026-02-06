@@ -129,6 +129,10 @@ jobs:
           install-swift-android-sdk: ${{ steps.setup.outputs.skip-fuse }}
           swift-android-sdk-version: nightly-6.3
 
+      - name: Install Prerequisities
+        if: ${{ inputs.brew-install != '' }}
+        run: brew install ${{ inputs.brew-install }}
+
       - name: Get swift version
         run: swift --version
 

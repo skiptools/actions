@@ -82,6 +82,8 @@ runs:
       shell: bash
       run: |
         if [ ${RUNNER_OS} == 'Linux' ]; then
+          # needed for https://github.com/swiftlang/swiftly/pull/509
+          sudo apt-get update
           # needed to be able to install swiftly toolchains
           sudo apt-get -y install libcurl4-openssl-dev
         fi

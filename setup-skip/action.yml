@@ -43,18 +43,18 @@ runs:
   steps:
     - name: Install Homebrew
       id: set-up-homebrew
-      uses: Homebrew/actions/setup-homebrew@0da5e123f3a792967ae460199673d87e2bfa257d # @main
+      uses: Homebrew/actions/setup-homebrew@main
 
     - name: Install Gradle
       if: ${{ inputs.gradle-version != '' && inputs.gradle-version != 'none' }}
-      uses: gradle/actions/setup-gradle@4d9f0ba0025fe599b4ebab900eb7f3a1d93ef4c2 # @v5
+      uses: gradle/actions/setup-gradle@v5
       with:
         gradle-version: ${{ inputs.gradle-version }}
         add-job-summary: 'on-failure'
 
     - name: Install Swift
       if: ${{ inputs.swift-version != '' }}
-      uses: swift-actions/setup-swift@7e293214cba9e9225c93ce3267f17f6efdb656a8 # @next
+      uses: swift-actions/setup-swift@v3
       with:
         swift-version: ${{ inputs.swift-version }}
 

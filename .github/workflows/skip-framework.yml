@@ -94,10 +94,6 @@ jobs:
       #DEVELOPER_DIR: /Applications/Xcode_26.1.app/Contents/Developer
       #DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
     steps:
-      - name: Free Disk Space
-        # need to free disk space or the emulator fails to launch sometimes
-        run: sudo rm -rf /Applications/Xcode_1[45]*.app /Applications/Xcode_16.[0123].app /opt/microsoft /opt/google /opt/az /usr/share/miniconda /usr/share/az* /usr/share/glade* /usr/local/share/chromium /usr/local/share/powershell /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/julia* /opt/hostedtoolcache/CodeQL /usr/local/share/boost
-
       - uses: actions/checkout@v6
         with:
           submodules: 'recursive'
@@ -190,9 +186,20 @@ jobs:
       - name: Create and Launch Android emulator
         if: ${{ inputs.run-android-tests == true && env.RUNNER_ARCH != 'ARM64' }}
         run: |
+          if [ "${RUNNER_OS}" == 'Linux' ]; then
+            # set up hardware acceleration for emulator
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
+
+            # need to free disk space or the emulator fails to launch sometimes
+            sudo rm -rf /opt/microsoft /opt/google /opt/az /usr/share/miniconda /usr/share/az* /usr/share/glade* /usr/local/share/chromium /usr/local/share/powershell /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/julia* /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          fi
+
           export ANDROID_USER_HOME=$HOME/.android
           export ANDROID_EMULATOR_HOME=$ANDROID_USER_HOME
           export ANDROID_AVD_HOME=$ANDROID_EMULATOR_HOME/avd
+
           skip android emulator create --android-api-level="${{ inputs.emulator-api-level }}" --device-profile="${{ inputs.emulator-profile }}" --verbose
           skip android emulator list --verbose
           skip android emulator launch --background --verbose

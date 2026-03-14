@@ -52,12 +52,6 @@ runs:
         gradle-version: ${{ inputs.gradle-version }}
         add-job-summary: 'on-failure'
 
-    - name: Install Swift
-      if: ${{ inputs.swift-version != '' }}
-      uses: swift-actions/setup-swift@v3
-      with:
-        swift-version: ${{ inputs.swift-version }}
-
     - name: Install Skip
       shell: bash
       run: |
@@ -89,6 +83,12 @@ runs:
     - name: Initialize swiftly
       shell: bash
       run: swiftly init --skip-install --assume-yes
+
+    - name: Install Host Swift Toolchain
+      if: ${{ inputs.swift-version != '' }}
+      run: |
+        # TODO: Error: invalid toolchain selector: "nightly-6.3"
+        swiftly install ${{ inputs.swift-version }}
 
     - name: Install Swift SDK for Android
       if: ${{ inputs.install-swift-android-sdk == 'true' }}

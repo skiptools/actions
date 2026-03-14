@@ -86,6 +86,7 @@ runs:
 
     - name: Install Host Swift Toolchain
       if: ${{ inputs.swift-version != '' }}
+      shell: bash
       run: |
         # TODO: Error: invalid toolchain selector: "nightly-6.3"
         swiftly install ${{ inputs.swift-version }}

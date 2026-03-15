@@ -55,6 +55,10 @@ The `skiptools/setup-skip` action accepts the following inputs:
     description: 'Version of the Swift SDK for Android to install'
     required: false
     default: ''
+  swift-android-ndk-version:
+    description: 'Version of the Android NDK to install'
+    required: false
+    default: ''
 ```
 
 ## Frameworks

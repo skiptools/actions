@@ -76,7 +76,7 @@ on:
       emulator-profile:
         required: false
         type: string
-        default: 'Nexus 4'
+        default: 'medium_phone'
       emulator-target:
         required: false
         type: string
@@ -90,14 +90,10 @@ jobs:
         os: ${{ fromJson(inputs.runs-on) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
-    env:     
+    #env:     
       #DEVELOPER_DIR: /Applications/Xcode_26.1.app/Contents/Developer
-      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+      #DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
     steps:
-      - name: Free Disk Space
-        # need to free disk space or the emulator fails to launch sometimes
-        run: sudo rm -rf /Applications/Xcode_1[45]*.app /Applications/Xcode_16.[0123].app /opt/microsoft /opt/google /opt/az /usr/share/miniconda /usr/share/az* /usr/share/glade* /usr/local/share/chromium /usr/local/share/powershell /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/julia* /opt/hostedtoolcache/CodeQL /usr/local/share/boost
-
       - uses: actions/checkout@v6
         with:
           submodules: 'recursive'
@@ -161,6 +157,9 @@ jobs:
       - name: Test iOS (connected)
         if: ${{ runner.os == 'macOS' && inputs.run-ios-tests == true && !startsWith(github.ref, 'refs/tags/') }}
         run: |
+          # list the current devices that are available
+          xcrun simctl list devices available
+
           # choose a pre-installed simulator based on the macos runner
           if [[ "${{ matrix.os }}" == "macos-13"* ]]; then
             SIMDEVICE="iPhone 15"
@@ -184,54 +183,34 @@ jobs:
           echo "Testing Skip module: ${SKIP_TEST_MODULE} from schemes list: $(xcodebuild -list -json | jq -r '.workspace.schemes[]')"
           SKIP_ZERO=1 xcodebuild test -sdk iphonesimulator -destination "platform=iOS Simulator,name=${SIMDEVICE}" -skipMacroValidation -skipPackagePluginValidation -configuration debug -scheme ${SKIP_TEST_MODULE}
 
-      - name: Cache Android emulator snapshot
-        if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && env.RUNNER_ARCH != 'ARM64' }}
-        uses: actions/cache@v5
-        id: avd-cache
-        with:
-          path: |
-            ~/.android/avd/*
-            ~/.android/adb*
-          key: 'avd-${{ inputs.emulator-profile }}_${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}_${{ matrix.os }}_${{ steps.setup.outputs.android-arch }}'
+      - name: Create and Launch Android emulator
+        if: ${{ inputs.run-android-tests == true && env.RUNNER_ARCH != 'ARM64' }}
+        run: |
+          if [ "${RUNNER_OS}" == 'Linux' ]; then
+            # set up hardware acceleration for emulator
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
 
-      # cache the emulator snapshot to speed up the launch, as per
-      # https://github.com/ReactiveCircus/android-emulator-runner
-      # note that the actual run must happen with -no-snapshot-save
-      # in order to not invalidate the cache
-      - name: Generate Android emulator snapshot
-        if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && steps.avd-cache.outputs.cache-hit != 'true' && env.RUNNER_ARCH != 'ARM64' }}
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          target: ${{ inputs.emulator-target }}
-          api-level: ${{ inputs.emulator-api-level }}
-          arch: ${{ steps.setup.outputs.android-arch }}
-          channel: ${{ inputs.emulator-channel }}
-          profile: ${{ inputs.emulator-profile }}
-          avd-name: '${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}'
-          disk-size: 4096M
-          force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: false
-          script: echo "Generated AVD snapshot for caching"
+            # need to free disk space or the emulator fails to launch sometimes
+            sudo rm -rf /opt/microsoft /opt/google /opt/az /usr/share/miniconda /usr/share/az* /usr/share/glade* /usr/local/share/chromium /usr/local/share/powershell /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/julia* /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          fi
+
+          export ANDROID_USER_HOME=$HOME/.android
+          export ANDROID_EMULATOR_HOME=$ANDROID_USER_HOME
+          export ANDROID_AVD_HOME=$ANDROID_EMULATOR_HOME/avd
+
+          skip android emulator create --android-api-level="${{ inputs.emulator-api-level }}" --device-profile="${{ inputs.emulator-profile }}" --verbose
+          skip android emulator list --verbose
+          skip android emulator launch --background --verbose
 
       - name: Test Android (connected)
-        # Android emulator needs to be disabled for macos-14 and 15
+        # Android emulator needs to be disabled for macOS ARM machines
         # due to lack of nested virtualization on the M1 runner machines
         # (https://github.com/ReactiveCircus/android-emulator-runner/issues/350)
-        if: ${{ inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && env.RUNNER_ARCH != 'ARM64' }}
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          target: ${{ inputs.emulator-target }}
-          api-level: ${{ inputs.emulator-api-level }}
-          arch: ${{ steps.setup.outputs.android-arch }}
-          channel: ${{ inputs.emulator-channel }}
-          profile: ${{ inputs.emulator-profile }}
-          avd-name: '${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}'
-          disk-size: 4096M
-          force-avd-creation: false
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: true
-          script: adb logcat *:E TestRunner:V & swift test --filter XCSkipTests
+        if: ${{ inputs.run-android-tests == true && env.RUNNER_ARCH != 'ARM64' }}
+        run: |
+          adb logcat *:E TestRunner:V & ANDROID_SERIAL=emulator-5554 swift test --filter XCSkipTests
 
       - name: "Release"
         if: ${{ runner.os == 'macOS' && startsWith(github.ref, 'refs/tags/') }}

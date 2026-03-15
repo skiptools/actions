@@ -1,5 +1,5 @@
 name: 'Setup Skip'
-description: 'Installs and condifures the Skip development environment'
+description: 'Installs and configures the Skip development environment'
 branding:
   icon: 'box'
   color: 'blue'
@@ -31,6 +31,10 @@ inputs:
     default: 'false'
   swift-android-sdk-version:
     description: 'Version of the Swift SDK for Android to install'
+    required: false
+    default: ''
+  swift-android-ndk-version:
+    description: 'Version of the Android SDK to install with the Swift SDK for  Android'
     required: false
     default: ''
   verbose:
@@ -98,6 +102,9 @@ runs:
         version_arg=""
         if [[ ! -z "${{ inputs.swift-android-sdk-version }}" ]]; then
           version_arg="--version ${{ inputs.swift-android-sdk-version }}"
+        fi
+        if [[ ! -z "${{ inputs.swift-android-ndk-version }}" ]]; then
+          version_arg="--ndk-version ${{ inputs.swift-android-ndk-version }}"
         fi
 
         skip android sdk install ${{ steps.setup.outputs.verbose_arg }} ${version_arg}

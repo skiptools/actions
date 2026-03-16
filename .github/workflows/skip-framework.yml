@@ -81,6 +81,13 @@ on:
         required: false
         type: string
         default: 'default'
+      emulator-launcher:
+        required: false
+        type: string
+        default: 'reactivecircus'
+        # alternative: use skip android emulator create/launch
+        # https://github.com/skiptools/skip/pull/574
+        #default: 'skip'
 
 jobs:
   skip-framework:
@@ -183,7 +190,7 @@ jobs:
           echo "Testing Skip module: ${SKIP_TEST_MODULE} from schemes list: $(xcodebuild -list -json | jq -r '.workspace.schemes[]')"
           SKIP_ZERO=1 xcodebuild test -sdk iphonesimulator -destination "platform=iOS Simulator,name=${SIMDEVICE}" -skipMacroValidation -skipPackagePluginValidation -configuration debug -scheme ${SKIP_TEST_MODULE}
 
-      - name: Create and Launch Android emulator
+      - name: Prepare Android Emulator
         if: ${{ inputs.run-android-tests == true && env.RUNNER_ARCH != 'ARM64' }}
         run: |
           if [ "${RUNNER_OS}" == 'Linux' ]; then
@@ -196,6 +203,9 @@ jobs:
             sudo rm -rf /opt/microsoft /opt/google /opt/az /usr/share/miniconda /usr/share/az* /usr/share/glade* /usr/local/share/chromium /usr/local/share/powershell /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/julia* /opt/hostedtoolcache/CodeQL /usr/local/share/boost
           fi
 
+      - name: Create and Launch skip android emulator
+        if: ${{ inputs.emulator-launcher == 'skip' && inputs.run-android-tests == true && env.RUNNER_ARCH != 'ARM64' }}
+        run: |
           export ANDROID_USER_HOME=$HOME/.android
           export ANDROID_EMULATOR_HOME=$ANDROID_USER_HOME
           export ANDROID_AVD_HOME=$ANDROID_EMULATOR_HOME/avd
@@ -204,13 +214,62 @@ jobs:
           skip android emulator list --verbose
           skip android emulator launch --background --verbose
 
-      - name: Test Android (connected)
+      - name: Test Android on skip android emulator (connected)
         # Android emulator needs to be disabled for macOS ARM machines
         # due to lack of nested virtualization on the M1 runner machines
         # (https://github.com/ReactiveCircus/android-emulator-runner/issues/350)
-        if: ${{ inputs.run-android-tests == true && env.RUNNER_ARCH != 'ARM64' }}
+        if: ${{ inputs.emulator-launcher != 'skip' && inputs.emulator-launcher == 'skip' && inputs.run-android-tests == true && env.RUNNER_ARCH != 'ARM64' }}
         run: |
           adb logcat *:E TestRunner:V & ANDROID_SERIAL=emulator-5554 swift test --filter XCSkipTests
+
+      - name: Cache ReactiveCircus Android emulator snapshot
+        if: ${{ inputs.emulator-launcher != 'skip' && inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && env.RUNNER_ARCH != 'ARM64' }}
+        uses: actions/cache@v5
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: 'avd-${{ inputs.emulator-profile }}_${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}_${{ matrix.os }}_${{ steps.setup.outputs.android-arch }}'
+
+      # cache the emulator snapshot to speed up the launch, as per
+      # https://github.com/ReactiveCircus/android-emulator-runner
+      # note that the actual run must happen with -no-snapshot-save
+      # in order to not invalidate the cache
+      - name: Generate ReactiveCircus Android emulator snapshot
+        if: ${{ inputs.emulator-launcher != 'skip' && inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && steps.avd-cache.outputs.cache-hit != 'true' && env.RUNNER_ARCH != 'ARM64' }}
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          target: ${{ inputs.emulator-target }}
+          api-level: ${{ inputs.emulator-api-level }}
+          arch: ${{ steps.setup.outputs.android-arch }}
+          channel: ${{ inputs.emulator-channel }}
+          profile: ${{ inputs.emulator-profile }}
+          avd-name: '${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}'
+          disk-size: 4096M
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Generated AVD snapshot for caching"
+
+      - name: Test ReactiveCircus Android emulator (connected)
+        # Android emulator needs to be disabled for macos-14 and 15
+        # due to lack of nested virtualization on the M1 runner machines
+        # (https://github.com/ReactiveCircus/android-emulator-runner/issues/350)
+        if: ${{ inputs.emulator-launcher != 'skip' && inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && env.RUNNER_ARCH != 'ARM64' }}
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          target: ${{ inputs.emulator-target }}
+          api-level: ${{ inputs.emulator-api-level }}
+          arch: ${{ steps.setup.outputs.android-arch }}
+          channel: ${{ inputs.emulator-channel }}
+          profile: ${{ inputs.emulator-profile }}
+          avd-name: '${{ inputs.emulator-channel }}_${{ inputs.emulator-target }}_${{ inputs.emulator-api-level }}'
+          disk-size: 4096M
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: adb logcat *:E TestRunner:V & swift test --filter XCSkipTests
 
       - name: "Release"
         if: ${{ runner.os == 'macOS' && startsWith(github.ref, 'refs/tags/') }}

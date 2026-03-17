@@ -76,7 +76,8 @@ on:
       emulator-profile:
         required: false
         type: string
-        default: 'medium_phone'
+        default: 'Nexus 4'
+        #default: 'medium_phone'
       emulator-target:
         required: false
         type: string

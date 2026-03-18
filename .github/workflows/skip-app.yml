@@ -130,8 +130,8 @@ jobs:
           XCODEPROJ=$(ls -d Darwin/*.xcodeproj | head -1)
           SCHEME="${SKIP_MODULE}"
           DERIVED_DATA="$(pwd)/.build/DerivedData"
-          SKIP_ZERO=1
-          SKIP_PLUGIN_DISABLED=1
+          export SKIP_ZERO=1
+          export SKIP_PLUGIN_DISABLED=1
 
           xcodebuild build \
             -project "${XCODEPROJ}" \

@@ -232,7 +232,8 @@ jobs:
         run: |
           if [ ! -d Darwin/fastlane/Maestro ] || [ -z "$(ls Darwin/fastlane/Maestro/*.yaml Darwin/fastlane/Maestro/*.yml 2>/dev/null)" ]; then
             mkdir -p Darwin/fastlane/Maestro
-            BUNDLE_ID=$(defaults read "$(find skip-export -name '*.app' -type d | head -1)/Info.plist" CFBundleIdentifier 2>/dev/null || echo "")
+            # note that "defaults read" needs an absolute path to the .plist
+            BUNDLE_ID=$(defaults read "$(find ${PWD}/skip-export -name '*.app' -type d | head -1)/Info.plist" CFBundleIdentifier 2>/dev/null || echo "")
             cat > Darwin/fastlane/Maestro/launch-and-screenshot.yaml <<FLOWEOF
           appId: ${BUNDLE_ID}
           ---
@@ -264,6 +265,7 @@ jobs:
           DEVICE_ID: ${{ steps.simulator.outputs.device-id }}
         run: |
           mkdir -p screenshots
+          export MAESTRO_CLI_NO_ANALYTICS=1
           LOCALES="${{ steps.locales.outputs.locales }}"
 
           for LOCALE in ${LOCALES}; do
@@ -283,7 +285,7 @@ jobs:
             for FLOW in Darwin/fastlane/Maestro/*.yaml Darwin/fastlane/Maestro/*.yml; do
               [ -f "${FLOW}" ] || continue
               echo "Running flow: ${FLOW} (locale: ${LOCALE})"
-              maestro --device "${DEVICE_ID}" test "${FLOW}" --output "screenshots/${LOCALE}"
+              maestro --platform ios --device "${DEVICE_ID}" test "${FLOW}" --output "screenshots/${LOCALE}"
             done
 
             echo "::endgroup::"
@@ -400,6 +402,8 @@ jobs:
       - name: "Prepare Maestro script"
         run: |
           cat > maestro.sh <<'EOF'
+          export MAESTRO_CLI_NO_ANALYTICS=1
+
           mkdir -p screenshots
 
           # Enable root access so setprop commands can modify system properties
@@ -438,7 +442,7 @@ jobs:
             for FLOW in Android/fastlane/Maestro/*.yaml Android/fastlane/Maestro/*.yml; do
               [ -f "${FLOW}" ] || continue
               echo "Running flow: ${FLOW} (locale: ${LOCALE})"
-              maestro test "${FLOW}" --output "screenshots/${LOCALE}"
+              maestro --platform android test "${FLOW}" --output "screenshots/${LOCALE}"
             done
 
             echo "::endgroup::"

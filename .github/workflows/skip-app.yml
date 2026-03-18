@@ -456,9 +456,18 @@ jobs:
           name: ios-screenshots
           path: ios-screenshots/
 
+      - name: "Check secrets availability"
+        id: check-secrets
+        env:
+          APPLE_CERTIFICATES_P12: ${{ secrets.APPLE_CERTIFICATES_P12 }}
+          APPLE_APPSTORE_APIKEY: ${{ secrets.APPLE_APPSTORE_APIKEY }}
+        run: |
+          echo "has-signing-cert=$(test -z "${APPLE_CERTIFICATES_P12}" && echo "false" || echo "true")" >> $GITHUB_OUTPUT
+          echo "has-appstore-key=$(test -z "${APPLE_APPSTORE_APIKEY}" && echo "false" || echo "true")" >> $GITHUB_OUTPUT
+
       - name: "Setup Darwin App Signing"
         id: signing
-        if: ${{ secrets.APPLE_CERTIFICATES_P12 != '' }}
+        if: ${{ steps.check-secrets.outputs.has-signing-cert == 'true' }}
         uses: apple-actions/import-codesign-certs@v6
         with:
           p12-file-base64: ${{ secrets.APPLE_CERTIFICATES_P12 }}
@@ -466,7 +475,7 @@ jobs:
 
       - name: "Sign iOS app"
         id: sign
-        if: ${{ secrets.APPLE_CERTIFICATES_P12 != '' }}
+        if: ${{ steps.check-secrets.outputs.has-signing-cert == 'true' }}
         run: |
           # Re-sign the exported .xcarchive or .ipa with the imported certificate
           IPA_PATH=$(find skip-export -name "*.ipa" | head -1)
@@ -479,7 +488,7 @@ jobs:
           fi
 
       - name: "Submit iOS App to App Store"
-        if: ${{ secrets.APPLE_APPSTORE_APIKEY != '' && secrets.APPLE_CERTIFICATES_P12 != '' }}
+        if: ${{ steps.check-secrets.outputs.has-appstore-key == 'true' && steps.check-secrets.outputs.has-signing-cert == 'true' }}
         working-directory: Darwin
         env:
           APPLE_APPSTORE_APIKEY: ${{ secrets.APPLE_APPSTORE_APIKEY }}
@@ -529,9 +538,18 @@ jobs:
           name: android-screenshots
           path: android-screenshots/
 
+      - name: "Check secrets availability"
+        id: check-secrets
+        env:
+          KEYSTORE_PROPERTIES: ${{ secrets.KEYSTORE_PROPERTIES }}
+          GOOGLE_PLAY_APIKEY: ${{ secrets.GOOGLE_PLAY_APIKEY }}
+        run: |
+          echo "has-keystore=$(test -z "${KEYSTORE_PROPERTIES}" && echo "false" || echo "true")" >> $GITHUB_OUTPUT
+          echo "has-play-key=$(test -z "${GOOGLE_PLAY_APIKEY}" && echo "false" || echo "true")" >> $GITHUB_OUTPUT
+
       - name: "Sign Android APK"
         id: sign
-        if: ${{ secrets.KEYSTORE_PROPERTIES != '' }}
+        if: ${{ steps.check-secrets.outputs.has-keystore == 'true' }}
         env:
           KEYSTORE_JKS: ${{ secrets.KEYSTORE_JKS }}
           KEYSTORE_PROPERTIES: ${{ secrets.KEYSTORE_PROPERTIES }}
@@ -573,7 +591,7 @@ jobs:
           fi
 
       - name: "Submit Android App to Play Store"
-        if: ${{ secrets.GOOGLE_PLAY_APIKEY != '' && secrets.KEYSTORE_PROPERTIES != '' }}
+        if: ${{ steps.check-secrets.outputs.has-play-key == 'true' && steps.check-secrets.outputs.has-keystore == 'true' }}
         working-directory: Android
         env:
           GOOGLE_PLAY_APIKEY: ${{ secrets.GOOGLE_PLAY_APIKEY }}

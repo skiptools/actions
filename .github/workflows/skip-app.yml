@@ -107,18 +107,13 @@ jobs:
           install-swift-android-sdk: ${{ steps.setup.outputs.skip-fuse }}
           swift-android-sdk-version: nightly-6.3
 
-      - name: "Build Project"
-        run: swift build
+      # not all projects build on macOS
+      #- name: "Build Project"
+      #  run: swift build
 
       - name: "Test Project"
         if: ${{ inputs.run-local-tests == true && ! startsWith(github.ref, 'refs/tags/') }}
         run: test ! -d Tests || skip test
-
-      - name: "Process Package.resolved"
-        run: |
-          cat Package.resolved
-          mkdir skip-export
-          cp -a Package.resolved skip-export/
 
       - name: "Export project (debug)"
         run: |
@@ -156,6 +151,12 @@ jobs:
           else
             echo "::warning::No simulator .app bundle found in DerivedData"
           fi
+
+      - name: "Process Package.resolved"
+        run: |
+          cat Package.resolved
+          mkdir -p skip-export
+          cp -a Package.resolved skip-export/
 
       - name: "Upload build artifacts"
         uses: actions/upload-artifact@v6

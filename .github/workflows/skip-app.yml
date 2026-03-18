@@ -117,6 +117,33 @@ jobs:
           skip export -v --release -d skip-export --show-tree --summary-file=$GITHUB_STEP_SUMMARY
           cp -a Package.resolved skip-export/
 
+      - name: "Build iOS Simulator app"
+        run: |
+          XCODEPROJ=$(ls -d Darwin/*.xcodeproj | head -1)
+          SCHEME="${SKIP_MODULE}"
+          DERIVED_DATA="$(pwd)/.build/DerivedData"
+
+          xcodebuild build \
+            -project "${XCODEPROJ}" \
+            -scheme "${SCHEME}" \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "${DERIVED_DATA}" \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            ENABLE_CODE_SIGNING=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            | tail -20
+
+          # Find and copy the .app bundle into skip-export
+          APP_PATH=$(find "${DERIVED_DATA}" -path "*/Build/Products/Debug-iphonesimulator/*.app" -type d | head -1)
+          if [ -n "${APP_PATH}" ]; then
+            cp -a "${APP_PATH}" skip-export/
+            echo "Simulator .app copied: $(basename "${APP_PATH}")"
+          else
+            echo "::warning::No simulator .app bundle found in DerivedData"
+          fi
+
       - name: "Upload build artifacts"
         uses: actions/upload-artifact@v6
         with:
@@ -353,6 +380,48 @@ jobs:
           fi
           echo "locales=${LOCALES}" >> $GITHUB_OUTPUT
 
+      - name: "Prepare Maestro script"
+        run: |
+          cat > maestro.sh <<'EOF'
+          mkdir -p screenshots
+
+          # Install the APK
+          APK_PATH=$(find skip-export -name "*-release.apk" -o -name "*-debug.apk" | head -1)
+          if [ -z "${APK_PATH}" ]; then
+            APK_PATH=$(find skip-export -name "*.apk" | head -1)
+          fi
+          if [ -z "${APK_PATH}" ]; then
+            echo "No APK found in skip-export"
+            exit 1
+          fi
+          adb install "${APK_PATH}"
+
+          LOCALES="${{ steps.locales.outputs.locales }}"
+
+          for LOCALE in ${LOCALES}; do
+            echo "::group::Running Maestro tests for locale ${LOCALE}"
+
+            # Change emulator locale
+            LANG_CODE="${LOCALE%[-_]*}"
+            REGION_CODE="${LOCALE#*[-_]}"
+            adb shell "settings put system system_locales ${LANG_CODE}-${REGION_CODE}"
+            adb shell "setprop persist.sys.locale ${LANG_CODE}-${REGION_CODE}"
+            adb shell "setprop persist.sys.language ${LANG_CODE}"
+            adb shell "setprop persist.sys.country ${REGION_CODE}"
+            # Apply locale change
+            adb shell am broadcast -a android.intent.action.LOCALE_CHANGED 2>/dev/null || true
+            sleep 2
+
+            for FLOW in Android/fastlane/Maestro/*.yaml Android/fastlane/Maestro/*.yml; do
+              [ -f "${FLOW}" ] || continue
+              echo "Running flow: ${FLOW} (locale: ${LOCALE})"
+              maestro test "${FLOW}" --output "screenshots/${LOCALE}" || true
+            done
+
+            echo "::endgroup::"
+          done
+          EOF
+
       - name: "Install APK and run Maestro tests for each locale"
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -360,44 +429,7 @@ jobs:
           arch: x86_64
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
-          script: |
-            mkdir -p screenshots
-
-            # Install the APK
-            APK_PATH=$(find skip-export -name "*-release.apk" -o -name "*-debug.apk" | head -1)
-            if [ -z "${APK_PATH}" ]; then
-              APK_PATH=$(find skip-export -name "*.apk" | head -1)
-            fi
-            if [ -z "${APK_PATH}" ]; then
-              echo "No APK found in skip-export"
-              exit 1
-            fi
-            adb install "${APK_PATH}"
-
-            LOCALES="${{ steps.locales.outputs.locales }}"
-
-            for LOCALE in ${LOCALES}; do
-              echo "::group::Running Maestro tests for locale ${LOCALE}"
-
-              # Change emulator locale
-              LANG_CODE="${LOCALE%[-_]*}"
-              REGION_CODE="${LOCALE#*[-_]}"
-              adb shell "settings put system system_locales ${LANG_CODE}-${REGION_CODE}"
-              adb shell "setprop persist.sys.locale ${LANG_CODE}-${REGION_CODE}"
-              adb shell "setprop persist.sys.language ${LANG_CODE}"
-              adb shell "setprop persist.sys.country ${REGION_CODE}"
-              # Apply locale change
-              adb shell am broadcast -a android.intent.action.LOCALE_CHANGED 2>/dev/null || true
-              sleep 2
-
-              for FLOW in Android/fastlane/Maestro/*.yaml Android/fastlane/Maestro/*.yml; do
-                [ -f "${FLOW}" ] || continue
-                echo "Running flow: ${FLOW} (locale: ${LOCALE})"
-                maestro test "${FLOW}" --output "screenshots/${LOCALE}" || true
-              done
-
-              echo "::endgroup::"
-            done
+          script: sh -ex maestro.sh
 
       - name: "Rename screenshots for flat upload"
         run: |
@@ -432,7 +464,7 @@ jobs:
   # 3a. Sign and release iOS app
   # ───────────────────────────────────────────────────────────────────
   release-ios-app:
-    needs: [build-app, run-ios-app]
+    needs: run-ios-app
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: macos-26
     timeout-minutes: 60
@@ -516,7 +548,7 @@ jobs:
   # 3b. Sign and release Android app
   # ───────────────────────────────────────────────────────────────────
   release-android-app:
-    needs: [build-app, run-android-app]
+    needs: run-android-app
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -621,7 +653,7 @@ jobs:
   # 4. Create GitHub Release with all artifacts and screenshots
   # ───────────────────────────────────────────────────────────────────
   github-release:
-    needs: [build-app, release-ios-app, release-android-app]
+    needs: [release-ios-app, release-android-app]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-24.04
     timeout-minutes: 15

@@ -107,9 +107,10 @@ jobs:
           install-swift-android-sdk: ${{ steps.setup.outputs.skip-fuse }}
           swift-android-sdk-version: nightly-6.3
 
-      # not all projects build on macOS
-      #- name: "Build Project"
-      #  run: swift build
+      - name: "Build Project"
+        #run: swift build
+        # not all projects build on macOS, so we need to build for iOS
+        run: xcrun swift build --triple arm64-apple-ios --sdk "$(xcrun --sdk iphoneos --show-sdk-path)"
 
       - name: "Test Project"
         if: ${{ inputs.run-local-tests == true && ! startsWith(github.ref, 'refs/tags/') }}
@@ -129,6 +130,8 @@ jobs:
           XCODEPROJ=$(ls -d Darwin/*.xcodeproj | head -1)
           SCHEME="${SKIP_MODULE}"
           DERIVED_DATA="$(pwd)/.build/DerivedData"
+          SKIP_ZERO=1
+          SKIP_PLUGIN_DISABLED=1
 
           xcodebuild build \
             -project "${XCODEPROJ}" \

@@ -232,8 +232,7 @@ jobs:
         run: |
           if [ ! -d Darwin/fastlane/Maestro ] || [ -z "$(ls Darwin/fastlane/Maestro/*.yaml Darwin/fastlane/Maestro/*.yml 2>/dev/null)" ]; then
             mkdir -p Darwin/fastlane/Maestro
-            # note that "defaults read" needs an absolute path to the .plist
-            BUNDLE_ID=$(defaults read "$(find ${PWD}/skip-export -name '*.app' -type d | head -1)/Info.plist" CFBundleIdentifier 2>/dev/null || echo "")
+            BUNDLE_ID=$(grep "^PRODUCT_BUNDLE_IDENTIFIER" Skip.env | cut -d'=' -f2 | tr -d ' ')
             cat > Darwin/fastlane/Maestro/launch-and-screenshot.yaml <<FLOWEOF
           appId: ${BUNDLE_ID}
           ---
@@ -293,6 +292,7 @@ jobs:
 
       - name: "Rename screenshots for flat upload"
         run: |
+          find screenshots/
           mkdir -p ios-screenshots
           for LOCALE_DIR in screenshots/*/; do
             LOCALE=$(basename "${LOCALE_DIR}")
@@ -368,12 +368,7 @@ jobs:
         run: |
           if [ ! -d Android/fastlane/Maestro ] || [ -z "$(ls Android/fastlane/Maestro/*.yaml Android/fastlane/Maestro/*.yml 2>/dev/null)" ]; then
             mkdir -p Android/fastlane/Maestro
-            # Try to extract package name from the APK
-            APK_PATH=$(find skip-export -name "*.apk" | head -1)
-            PACKAGE_NAME=""
-            if [ -n "${APK_PATH}" ]; then
-              PACKAGE_NAME=$(aapt dump badging "${APK_PATH}" 2>/dev/null | grep "package: name=" | sed "s/.*name='\([^']*\)'.*/\1/" || echo "")
-            fi
+            PACKAGE_NAME=$(grep "^ANDROID_PACKAGE_NAME" Skip.env | cut -d'=' -f2 | tr -d ' ')
             cat > Android/fastlane/Maestro/launch-and-screenshot.yaml <<FLOWEOF
           appId: ${PACKAGE_NAME}
           ---

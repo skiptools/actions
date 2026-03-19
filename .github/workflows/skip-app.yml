@@ -284,7 +284,7 @@ jobs:
             for FLOW in Darwin/fastlane/Maestro/*.yaml Darwin/fastlane/Maestro/*.yml; do
               [ -f "${FLOW}" ] || continue
               echo "Running flow: ${FLOW} (locale: ${LOCALE})"
-              maestro --platform ios --device "${DEVICE_ID}" test "${FLOW}" --output "screenshots/${LOCALE}"
+              maestro --platform ios --device "${DEVICE_ID}" test "${FLOW}" --test-output-dir "screenshots/${LOCALE}"
             done
 
             echo "::endgroup::"
@@ -437,7 +437,7 @@ jobs:
             for FLOW in Android/fastlane/Maestro/*.yaml Android/fastlane/Maestro/*.yml; do
               [ -f "${FLOW}" ] || continue
               echo "Running flow: ${FLOW} (locale: ${LOCALE})"
-              maestro --platform android test "${FLOW}" --output "screenshots/${LOCALE}"
+              maestro --platform android test "${FLOW}" --test-output-dir "screenshots/${LOCALE}"
             done
 
             echo "::endgroup::"

@@ -358,7 +358,8 @@ jobs:
         run: |
           if [ ! -d Android/fastlane/Maestro ] || [ -z "$(ls Android/fastlane/Maestro/*.yaml Android/fastlane/Maestro/*.yml 2>/dev/null)" ]; then
             mkdir -p Android/fastlane/Maestro
-            PACKAGE_NAME=$(grep "^ANDROID_PACKAGE_NAME" Skip.env | cut -d'=' -f2 | tr -d ' ')
+            #PACKAGE_NAME=$(grep "^ANDROID_PACKAGE_NAME" Skip.env | cut -d'=' -f2 | tr -d ' ')
+            PACKAGE_NAME=$(grep "^PRODUCT_BUNDLE_IDENTIFIER" Skip.env | cut -d'=' -f2 | tr -d ' ' | tr '-' '_')
             cat > Android/fastlane/Maestro/launch-and-screenshot.yaml <<FLOWEOF
           appId: ${PACKAGE_NAME}
           ---

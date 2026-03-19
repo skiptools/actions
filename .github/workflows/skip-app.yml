@@ -292,7 +292,7 @@ jobs:
 
       - name: "Rename screenshots for flat upload"
         run: |
-          find screenshots/
+          find . -name '*.png'
           mkdir -p ios-screenshots
           for LOCALE_DIR in screenshots/*/; do
             LOCALE=$(basename "${LOCALE_DIR}")
@@ -353,16 +353,6 @@ jobs:
         run: |
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "${HOME}/.maestro/bin" >> $GITHUB_PATH
-
-      - name: "Start Android Emulator"
-        uses: reactivecircus/android-emulator-runner@v2
-        id: emulator
-        with:
-          api-level: 35
-          arch: x86_64
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          disable-animations: true
-          script: echo "Emulator started"
 
       - name: "Ensure Maestro test flows exist"
         run: |
@@ -455,6 +445,7 @@ jobs:
 
       - name: "Rename screenshots for flat upload"
         run: |
+          find . -name '*.png'
           mkdir -p android-screenshots
           for LOCALE_DIR in screenshots/*/; do
             [ -d "${LOCALE_DIR}" ] || continue

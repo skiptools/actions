@@ -30,6 +30,10 @@ name: "Skip App CI"
 on:
   workflow_call:
     inputs:
+      repository:
+        required: false
+        type: string
+        description: "Repository to checkout (owner/repo). Defaults to the calling repository."
       brew-install:
         required: false
         type: string
@@ -59,8 +63,8 @@ jobs:
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
     steps:
-      - uses: actions/checkout@v6
         with:
+          repository: ${{ inputs.repository || github.repository }}
           submodules: 'recursive'
 
       - name: "Setup"

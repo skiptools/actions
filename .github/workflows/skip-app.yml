@@ -239,6 +239,7 @@ jobs:
           appId: ${BUNDLE_ID}
           ---
           - launchApp
+          - waitForAnimationToEnd
           - takeScreenshot: Screen-00
           FLOWEOF
           fi
@@ -366,6 +367,7 @@ jobs:
           appId: ${PACKAGE_NAME}
           ---
           - launchApp
+          - waitForAnimationToEnd
           - takeScreenshot: Screen-00
           FLOWEOF
           fi
@@ -442,6 +444,7 @@ jobs:
         with:
           api-level: 35
           arch: x86_64
+          profile: pixel_9
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
           script: sh -ex maestro.sh

@@ -4,6 +4,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
   pull_request:
+
+permissions:
+  contents: write
+
 jobs:
   setup-skip-test:
     strategy:

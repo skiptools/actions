@@ -38,6 +38,10 @@ name: "Skip App CI"
 on:
   workflow_call:
     inputs:
+      repository:
+        required: false
+        type: string
+        description: "Repository to checkout (owner/repo). Defaults to the calling repository."
       brew-install:
         required: false
         type: string
@@ -76,6 +80,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          repository: ${{ inputs.repository || github.repository }}
           submodules: 'recursive'
 
       - name: "Setup"
@@ -208,7 +213,7 @@ jobs:
         id: simulator
         run: |
           # Create and boot a simulator
-          DEVICE_ID=$(xcrun simctl create "MaestroTest" "iPhone 16")
+          DEVICE_ID=$(xcrun simctl create "MaestroTest" "iPhone Air")
           echo "device-id=${DEVICE_ID}" >> $GITHUB_OUTPUT
           xcrun simctl boot "${DEVICE_ID}"
           # Wait for the simulator to be ready

@@ -30,6 +30,10 @@ name: "Skip Framework CI"
 on:
   workflow_call:
     inputs:
+      repository:
+        required: false
+        type: string
+        description: "Repository to checkout (owner/repo). Defaults to the calling repository."
       # Need an Intel macOS runner to be able to run the Android emulator
       # https://github.com/ReactiveCircus/android-emulator-runner/issues/350
       runs-on:
@@ -104,6 +108,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          repository: ${{ inputs.repository || github.repository }}
           submodules: 'recursive'
 
       - name: Setup Environment

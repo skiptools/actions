@@ -19,3 +19,13 @@ jobs:
       - run: skip checkup
         if: ${{ startsWith(matrix.os, 'macos-') }}
 
+  skip-app-test:
+    uses: ./.github/workflows/skip-app.yml
+    with:
+      repository: skiptools/skipapp-hello
+
+  skip-framework-test:
+    uses: ./.github/workflows/skip-framework.yml
+    with:
+      repository: skiptools/skip-lib
+

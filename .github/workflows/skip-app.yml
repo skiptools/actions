@@ -444,7 +444,8 @@ jobs:
         with:
           api-level: 35
           arch: x86_64
-          profile: pixel_9
+          profile: pixel_7_pro
+          #profile: pixel_9 # not available?
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
           script: sh -ex maestro.sh

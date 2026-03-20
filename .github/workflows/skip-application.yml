@@ -321,6 +321,17 @@ jobs:
             INDEX=$((INDEX + 1))
           done
 
+      - name: "Display iOS screenshots in summary"
+        if: always()
+        run: |
+          echo "### iOS Screenshots" >> $GITHUB_STEP_SUMMARY
+          for IMG in ios-screenshots/*.png; do
+            [ -f "${IMG}" ] || continue
+            IMG_BASE64=$(base64 -i "${IMG}")
+            echo "<img src='data:image/png;base64,${IMG_BASE64}' width='400' />" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          done
+
       - name: "Shutdown simulator"
         if: always()
         run: xcrun simctl shutdown "${{ steps.simulator.outputs.device-id }}" 2>/dev/null || true
@@ -476,6 +487,17 @@ jobs:
             PADDED=$(printf "%02d" ${INDEX})
             cp -v "${IMG}" "android-screenshots/Screen-${PADDED}-Android-default.png" 2>/dev/null
             INDEX=$((INDEX + 1))
+          done
+
+      - name: "Display Android screenshots in summary"
+        if: always()
+        run: |
+          echo "### Android Screenshots" >> $GITHUB_STEP_SUMMARY
+          for IMG in android-screenshots/*.png; do
+            [ -f "${IMG}" ] || continue
+            IMG_BASE64=$(base64 -w 0 "${IMG}")
+            echo "<img src='data:image/png;base64,${IMG_BASE64}' width='400' />" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
           done
 
       - name: "Upload Android screenshots"

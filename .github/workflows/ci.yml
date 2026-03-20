@@ -32,4 +32,5 @@ jobs:
     uses: ./.github/workflows/skip-framework.yml
     with:
       repository: skiptools/skip-lib
+      runs-on: "['macos-15-intel', 'ubuntu-24.04']"
 

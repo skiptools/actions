@@ -99,15 +99,16 @@ runs:
       if: ${{ inputs.install-swift-android-sdk == 'true' }}
       shell: bash
       run: |
-        version_arg=""
+        sdk_version_arg=""
         if [[ ! -z "${{ inputs.swift-android-sdk-version }}" ]]; then
-          version_arg="--version ${{ inputs.swift-android-sdk-version }}"
+          sdk_version_arg="--version ${{ inputs.swift-android-sdk-version }}"
         fi
+        ndk_version_arg=""
         if [[ ! -z "${{ inputs.swift-android-ndk-version }}" ]]; then
-          version_arg="--ndk-version ${{ inputs.swift-android-ndk-version }}"
+          ndk_version_arg="--ndk-version ${{ inputs.swift-android-ndk-version }}"
         fi
 
-        skip android sdk install ${{ steps.setup.outputs.verbose_arg }} ${version_arg}
+        skip android sdk install ${{ steps.setup.outputs.verbose_arg }} ${sdk_version_arg} ${ndk_version_arg}
 
         # workaround fail when ANDROID_NDK_ROOT is set
         # see https://github.com/finagolfin/swift-android-sdk/issues/207

@@ -129,9 +129,7 @@ jobs:
       - uses: skiptools/actions/setup-skip@v1
         with:
           verify-project: '.'
-          swift-version: ${{ inputs.install-swift }}
           install-swift-android-sdk: ${{ steps.setup.outputs.skip-fuse }}
-          swift-android-sdk-version: nightly-6.3
 
       - name: Install Prerequisities
         if: ${{ inputs.brew-install != '' }}

@@ -106,6 +106,51 @@ jobs:
         with:
           submodules: 'recursive'
 
+      - name: Verify License Headers
+        if: ${{ startsWith(github.event.repository.name, 'skip-') }}
+        run: |
+          FAILED=0
+          while IFS= read -r file; do
+            LINE1=$(sed -n '1p' "$file")
+            LINE2=$(sed -n '2p' "$file")
+            if ! echo "$LINE1" | grep -qE '^// Copyright [0-9]{4}(-[0-9]{4})? Skip$'; then
+              echo "::error file=$file,line=1::Expected first line to match '// Copyright YYYY-YYYY Skip' but found: $LINE1"
+              FAILED=1
+            fi
+            if [ "$LINE2" != "// SPDX-License-Identifier: MPL-2.0" ]; then
+              echo "::error file=$file,line=2::Expected second line to be '// SPDX-License-Identifier: MPL-2.0' but found: $LINE2"
+              FAILED=1
+            fi
+          done < <(find . -name '*.swift' -not -path './.build/*')
+          # Verify LICENSE.txt exists and is MPL-2.0
+          if [ ! -f LICENSE.txt ]; then
+            echo "::error::LICENSE.txt not found in the repository root."
+            FAILED=1
+          else
+            LICENSE_LINE1=$(sed -n '1p' LICENSE.txt)
+            if ! echo "$LICENSE_LINE1" | grep -qE '^Copyright [0-9]{4}(-[0-9]{4})? Skip$'; then
+              echo "::error file=LICENSE.txt,line=1::Expected first line to match 'Copyright YEAR-YEAR Skip' but found: $LICENSE_LINE1"
+              FAILED=1
+            fi
+            if ! grep -q 'Mozilla Public License' LICENSE.txt; then
+              echo "::error file=LICENSE.txt::LICENSE.txt does not appear to contain the Mozilla Public License."
+              FAILED=1
+            fi
+            if ! grep -q 'Version 2\.0' LICENSE.txt; then
+              echo "::error file=LICENSE.txt::LICENSE.txt does not appear to be MPL Version 2.0."
+              FAILED=1
+            fi
+            if ! grep -q 'mozilla.org/MPL/2\.0' LICENSE.txt; then
+              echo "::error file=LICENSE.txt::LICENSE.txt does not contain the MPL-2.0 reference URL (mozilla.org/MPL/2.0)."
+              FAILED=1
+            fi
+          fi
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo "::error::License check failed. Every .swift file must start with '// Copyright YYYY-YYYY Skip' on line 1 and '// SPDX-License-Identifier: MPL-2.0' on line 2. LICENSE.txt must exist, start with 'Copyright YEAR-YEAR Skip', and contain the Mozilla Public License 2.0."
+            exit 1
+          fi
+
       - name: Setup Environment
         id: setup
         run: |

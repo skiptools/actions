@@ -59,7 +59,9 @@ runs:
     - name: Install Skip
       shell: bash
       run: |
-        HOMEBREW_NO_AUTO_UPDATE=1 brew install skiptools/skip/skip
+        export HOMEBREW_NO_AUTO_UPDATE=1
+        brew tap skiptools/skip
+        brew install skiptools/skip/skip
         if [ ${RUNNER_OS} == 'macOS' ]; then
           # enable running the Skip plugin from xcodebuild without user prompt
           defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES

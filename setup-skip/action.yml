@@ -71,7 +71,7 @@ runs:
         else
           brew tap skiptools/skip
           brew install skiptools/skip/skip
-        endif
+        fi
 
         if [ ${RUNNER_OS} == 'macOS' ]; then
           # enable running the Skip plugin from xcodebuild without user prompt

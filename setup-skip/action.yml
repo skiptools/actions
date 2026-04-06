@@ -9,6 +9,10 @@ inputs:
     description: 'The version of the Skip toolchain to install'
     required: true
     default: 'latest'
+  skip-source:
+    description: 'The Homebrew source to install skip from (formula or cask)'
+    required: true
+    default: 'formula'
   run-doctor:
     description: 'Whether to run skip doctor'
     required: false
@@ -59,9 +63,16 @@ runs:
     - name: Install Skip
       shell: bash
       run: |
-        export HOMEBREW_NO_AUTO_UPDATE=1
-        brew tap skiptools/skip
-        brew install skiptools/skip/skip
+        # whether to install the canonical "skip" formula
+        # or the skiptools cask tap version of the tool
+        #export HOMEBREW_NO_AUTO_UPDATE=1
+        if [[ "${{ inputs.skip-source }}" == "formula" ]]; then
+          brew install skip
+        else
+          brew tap skiptools/skip
+          brew install skiptools/skip/skip
+        endif
+
         if [ ${RUNNER_OS} == 'macOS' ]; then
           # enable running the Skip plugin from xcodebuild without user prompt
           defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES

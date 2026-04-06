@@ -10,10 +10,13 @@ jobs:
       fail-fast: false
       matrix:
         os: ['macos-latest', 'ubuntu-latest']
+        brew-source: ['formula', 'cask']
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
       - uses: ./setup-skip
+        with:
+          skip-source: ${{ matrix.brew-source }}
       - run: skip doctor
       - run: skip android sdk install --verbose
       - run: skip checkup

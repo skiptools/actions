@@ -31,7 +31,7 @@ steps:
 | Input | Description | Default |
 |-------|-------------|---------|
 | `skip-version` | Version of the Skip toolchain to install | `'latest'` |
-| `skip-source` | Homebrew source to install Skip from (`formula` or `cask`) | `'formula'` |
+| `skip-source` | Homebrew source to install Skip from ([`formula`](https://formulae.brew.sh/formula/skip) or [`cask`](https://github.com/skiptools/homebrew-skip/blob/main/Casks/skip.rb)) | `'formula'` |
 | `run-doctor` | Run `skip doctor` after setup to verify the environment | `'true'` |
 | `verify-project` | Path to a project directory to verify with `skip verify` | `''` (disabled) |
 | `swift-version` | Swift toolchain version to install via `swiftly` | `''` (use pre-installed) |

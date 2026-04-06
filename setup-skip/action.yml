@@ -7,11 +7,11 @@ branding:
 inputs:
   skip-version:
     description: 'The version of the Skip toolchain to install'
-    required: true
+    required: false
     default: 'latest'
   skip-source:
     description: 'The Homebrew source to install skip from (formula or cask)'
-    required: true
+    required: false
     default: 'formula'
   run-doctor:
     description: 'Whether to run skip doctor'

@@ -28,18 +28,18 @@ steps:
 
 ### Inputs
 
-| Input | Description | Required | Default |
-|-------|-------------|----------|---------|
-| `skip-version` | Version of the Skip toolchain to install | Yes | `'latest'` |
-| `skip-source` | Homebrew source to install Skip from (`formula` or `cask`) | Yes | `'formula'` |
-| `run-doctor` | Run `skip doctor` after setup to verify the environment | No | `'true'` |
-| `verify-project` | Path to a project directory to verify with `skip verify` | No | `''` (disabled) |
-| `swift-version` | Swift toolchain version to install via `swiftly` | No | `''` (use pre-installed) |
-| `gradle-version` | Gradle version to set up. Set to `'none'` to skip Gradle installation | No | `'current'` |
-| `install-swift-android-sdk` | Install the native Swift SDK for Android (required for Skip Fuse) | No | `'false'` |
-| `swift-android-sdk-version` | Specific version of the Swift Android SDK to install | No | `''` (latest) |
-| `swift-android-ndk-version` | Specific version of the Android NDK to install with the Swift SDK | No | `''` (default) |
-| `verbose` | Enable verbose output for setup commands | No | `''` (disabled) |
+| Input | Description | Default |
+|-------|-------------|---------|
+| `skip-version` | Version of the Skip toolchain to install | `'latest'` |
+| `skip-source` | Homebrew source to install Skip from (`formula` or `cask`) | `'formula'` |
+| `run-doctor` | Run `skip doctor` after setup to verify the environment | `'true'` |
+| `verify-project` | Path to a project directory to verify with `skip verify` | `''` (disabled) |
+| `swift-version` | Swift toolchain version to install via `swiftly` | `''` (use pre-installed) |
+| `gradle-version` | Gradle version to set up. Set to `'none'` to skip Gradle installation | `'current'` |
+| `install-swift-android-sdk` | Install the native Swift SDK for Android (required for Skip Fuse) | `'false'` |
+| `swift-android-sdk-version` | Specific version of the Swift Android SDK to install | `''` (latest) |
+| `swift-android-ndk-version` | Specific version of the Android NDK to install with the Swift SDK | `''` (default) |
+| `verbose` | Enable verbose output for setup commands | `''` (disabled) |
 
 ### What It Does
 
@@ -93,32 +93,31 @@ jobs:
 
 ### Inputs
 
-| Input | Description | Required | Type | Default |
-|-------|-------------|----------|------|---------|
-| `runs-on` | JSON array of runner labels to use | No | `string` | `"['macos-15-intel']"` |
-| `brew-install` | Additional Homebrew packages to install before building | No | `string` | (none) |
-| `install-swift` | Swift toolchain version to install | No | `string` | (none) |
-| `run-export` | Run `skip export` to build the project for both platforms | No | `boolean` | `true` |
-| `run-local-tests` | Run local Swift and Robolectric tests (skipped on tag pushes) | No | `boolean` | `true` |
-| `run-ios-tests` | Run iOS simulator tests via `xcodebuild` (skipped on tag pushes) | No | `boolean` | `true` |
-| `run-android-tests` | Run instrumented Android emulator tests (skipped on tag pushes) | No | `boolean` | `true` |
-| `android-native-disabled` | Skip the automatic detection of Skip Fuse (native Swift) mode | No | `boolean` | `false` |
-| `run-android-native-build` | Force running `skip android build` for native Swift on Android | No | `string` | (none) |
-| `emulator-api-level` | Android API level for the emulator | No | `string` | `'28'` |
-| `emulator-channel` | Android system image channel (`stable`, `beta`, `canary`) | No | `string` | `'stable'` |
-| `emulator-profile` | Android emulator hardware profile | No | `string` | `'Nexus 4'` |
-| `emulator-target` | Android emulator system image target | No | `string` | `'default'` |
-| `emulator-launcher` | Emulator launcher to use (`reactivecircus` or `skip`) | No | `string` | `'reactivecircus'` |
+| Input | Description | Type | Default |
+|-------|-------------|------|---------|
+| `runs-on` | JSON array of runner labels to use | `string` | `"['macos-15-intel']"` |
+| `brew-install` | Additional Homebrew packages to install before building | `string` | (none) |
+| `install-swift` | Swift toolchain version to install | `string` | (none) |
+| `run-export` | Run `skip export` to build the project for both platforms | `boolean` | `true` |
+| `run-local-tests` | Run local Swift and Robolectric tests (skipped on tag pushes) | `boolean` | `true` |
+| `run-ios-tests` | Run iOS simulator tests via `xcodebuild` (skipped on tag pushes) | `boolean` | `true` |
+| `run-android-tests` | Run instrumented Android emulator tests (skipped on tag pushes) | `boolean` | `true` |
+| `android-native-disabled` | Skip the automatic detection of Skip Fuse (native Swift) mode | `boolean` | `false` |
+| `run-android-native-build` | Force running `skip android build` for native Swift on Android | `string` | (none) |
+| `emulator-api-level` | Android API level for the emulator | `string` | `'28'` |
+| `emulator-channel` | Android system image channel (`stable`, `beta`, `canary`) | `string` | `'stable'` |
+| `emulator-profile` | Android emulator hardware profile | `string` | `'Nexus 4'` |
+| `emulator-target` | Android emulator system image target | `string` | `'default'` |
+| `emulator-launcher` | Emulator launcher to use (`reactivecircus` or `skip`) | `string` | `'reactivecircus'` |
 
 ### What It Does
 
-1. **License verification** -- Checks that all `.swift` files (in repos named `skip-*`) have the required copyright and MPL-2.0 license headers, and that `LICENSE.txt` exists and contains the Mozilla Public License 2.0
-2. **Environment setup** -- Detects whether the project uses Skip Fuse (by checking for `skip-bridge` dependency), installs the Skip toolchain and optionally the Swift Android SDK
-3. **Export** -- Runs `skip export` to build the project for both iOS and Android
-4. **Local tests** -- Runs `skip test` (or `swift test` on Linux) to execute Swift tests and Kotlin/Robolectric tests
-5. **iOS simulator tests** -- Runs `xcodebuild test` on an iOS simulator, automatically selecting an appropriate device for the runner OS version
-6. **Android emulator tests** -- Launches an Android emulator (via ReactiveCircus or `skip android emulator`) and runs `swift test --filter XCSkipTests` for instrumented tests
-7. **Release** -- On semver tag pushes, creates a GitHub release and uploads any `skip-export` artifacts
+1. **Environment setup**: Detects whether the project uses Skip Fuse (by checking for `skip-bridge` dependency), installs the Skip toolchain and optionally the Swift Android SDK
+1. **Export**: Runs `skip export` to build the project for both iOS and Android
+1. **Local tests**: Runs `skip test` (or `swift test` on Linux) to execute Swift tests and Kotlin/Robolectric tests
+1. **iOS simulator tests**: Runs `xcodebuild test` on an iOS simulator, automatically selecting an appropriate device for the runner OS version
+1. **Android emulator tests**: Launches an Android emulator (via ReactiveCircus or `skip android emulator`) and runs `swift test --filter XCSkipTests` for instrumented tests
+1. **Release**: On semver tag pushes, creates a GitHub release and uploads any `skip-export` artifacts
 
 ### Example: Framework with Custom Emulator Settings
 
@@ -165,10 +164,10 @@ jobs:
 
 ### Inputs
 
-| Input | Description | Required | Type | Default |
-|-------|-------------|----------|------|---------|
-| `brew-install` | Additional Homebrew packages to install before building | No | `string` | (none) |
-| `run-local-tests` | Run local tests with `skip test` (skipped on tag pushes) | No | `boolean` | `true` |
+| Input | Description | Type | Default |
+|-------|-------------|------|---------|
+| `brew-install` | Additional Homebrew packages to install before building | `string` | (none) |
+| `run-local-tests` | Run local tests with `skip test` (skipped on tag pushes) | `boolean` | `true` |
 
 ### Secrets
 
@@ -186,15 +185,15 @@ These optional secrets enable app signing and store submission:
 
 ### What It Does
 
-1. **Environment setup** -- Detects Skip Fuse mode from `skip.yml` files, sets the marketing version from the latest semver tag, and sets the build number from the git commit count
-2. **Tests** -- Runs `skip test` if a `Tests` directory exists (skipped on tag pushes)
-3. **Export** -- Runs `skip export` twice: once for debug and once for release, producing both iOS and Android build artifacts
-4. **Android signing** -- If `KEYSTORE_PROPERTIES` is provided, configures Android app signing with the keystore
-5. **iOS signing** -- If `APPLE_CERTIFICATES_P12` is provided, imports code signing certificates
-6. **Fastlane** -- Runs `fastlane assemble` in both `Android/` and `Darwin/` directories if Fastlane is configured (on non-tag pushes)
-7. **App Store submission** -- On semver tag pushes, submits to the Apple App Store and/or Google Play Store if the corresponding API key secrets are provided
-8. **Release** -- On semver tag pushes, creates a GitHub release with the exported artifacts
-9. **Artifact upload** -- Always uploads the `skip-export/` directory as a build artifact
+1. **Environment setup**: Detects Skip Fuse mode from `skip.yml` files, sets the marketing version from the latest semver tag, and sets the build number from the git commit count
+1. **Tests**: Runs `skip test` if a `Tests` directory exists (skipped on tag pushes)
+1. **Export**: Runs `skip export` twice: once for debug and once for release, producing both iOS and Android build artifacts
+1. **Android signing**: If `KEYSTORE_PROPERTIES` is provided, configures Android app signing with the keystore
+1. **iOS signing**: If `APPLE_CERTIFICATES_P12` is provided, imports code signing certificates
+1. **Fastlane**: Runs `fastlane assemble` in both `Android/` and `Darwin/` directories if Fastlane is configured (on non-tag pushes)
+1. **App Store submission**: On semver tag pushes, submits to the Apple App Store and/or Google Play Store if the corresponding API key secrets are provided
+1. **Release**: On semver tag pushes, creates a GitHub release with the exported artifacts
+1. **Artifact upload**: Always uploads the `skip-export/` directory as a build artifact
 
 ### Example: App with Store Deployment
 

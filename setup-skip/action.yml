@@ -12,7 +12,7 @@ inputs:
   skip-source:
     description: 'The Homebrew source to install skip from (formula or cask)'
     required: false
-    default: 'cask'
+    default: 'formula'
   run-doctor:
     description: 'Whether to run skip doctor'
     required: false

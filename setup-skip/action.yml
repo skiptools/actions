@@ -106,7 +106,7 @@ runs:
 
     - name: Initialize swiftly
       shell: bash
-      run: swiftly init --skip-install --assume-yes
+      run: brew install swiftly && swiftly init --skip-install --assume-yes
 
     - name: Install Host Swift Toolchain
       if: ${{ inputs.swift-version != '' }}

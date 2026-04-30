@@ -33,6 +33,9 @@ on:
       brew-install:
         required: false
         type: string
+      skip-source:
+        required: false
+        type: string
       run-local-tests:
         required: false
         type: boolean
@@ -106,9 +109,10 @@ jobs:
           # presume the native toolchain
           yq -e '.skip.mode' Sources/*/Skip/skip.yml >> /dev/null && echo "skip-fuse=true" >> $GITHUB_OUTPUT || echo "Native toolchain not needed"
 
-      - uses: skiptools/actions/setup-skip@v1
+      - uses: ./setup-skip
         with:
           verify-project: '.'
+          skip-source: '${{ inputs.skip-source }}'
           install-swift-android-sdk: ${{ steps.setup.outputs.skip-fuse }}
 
       - name: "Run Tests"

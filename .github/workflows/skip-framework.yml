@@ -39,6 +39,9 @@ on:
       brew-install:
         required: false
         type: string
+      skip-source:
+        required: false
+        type: string
       install-swift:
         required: false
         type: string
@@ -180,9 +183,10 @@ jobs:
             echo "skip-fuse=true" >> $GITHUB_OUTPUT
           fi
 
-      - uses: skiptools/actions/setup-skip@v1
+      - uses: ./setup-skip
         with:
           verify-project: '.'
+          skip-source: '${{ inputs.skip-source }}'
           install-swift-android-sdk: ${{ steps.setup.outputs.skip-fuse }}
 
       - name: Install Prerequisities

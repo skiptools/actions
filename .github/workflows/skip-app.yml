@@ -109,7 +109,7 @@ jobs:
           # presume the native toolchain
           yq -e '.skip.mode' Sources/*/Skip/skip.yml >> /dev/null && echo "skip-fuse=true" >> $GITHUB_OUTPUT || echo "Native toolchain not needed"
 
-      - uses: ./setup-skip@skip-source
+      - uses: skiptools/actions/setup-skip@skip-source
         with:
           verify-project: '.'
           skip-source: '${{ inputs.skip-source }}'

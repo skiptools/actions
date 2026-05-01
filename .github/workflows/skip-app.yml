@@ -57,14 +57,15 @@ on:
         required: false
 jobs:
   skip-app:
-    runs-on: macos-15-intel
+    runs-on: macos-26
     timeout-minutes: 180
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
     steps:
       - uses: actions/checkout@v6
         with:
           submodules: 'recursive'
+          # need to fetch tags to be able to update the version in Skip.env
+          fetch-tags: true
+          fetch-depth: 0
 
       - name: "Setup"
         id: setup
@@ -133,7 +134,10 @@ jobs:
         run: |
           skip export -d skip-export --verbose --release --appindex --show-tree --summary-file=$GITHUB_STEP_SUMMARY
           cp -a Package.resolved skip-export/
-          cat skip-export/appindex.json
+
+      - name: "Validate appindex.json"
+        run: |
+          cat skip-export/appindex.json | jq .
 
       - name: "Setup Android App Signing"
         if: ${{ env.KEYSTORE_PROPERTIES != '' }}

@@ -131,10 +131,9 @@ jobs:
 
       - name: "Export project"
         run: |
-          mkdir skip-export/
-          skip meta index --sbom -v -O skip-export/appindex.json
-          skip export --release -v -d skip-export --show-tree --summary-file=$GITHUB_STEP_SUMMARY
+          skip export -d skip-export --verbose --release --appindex --show-tree --summary-file=$GITHUB_STEP_SUMMARY
           cp -a Package.resolved skip-export/
+          cat skip-export/appindex.json
 
       - name: "Setup Android App Signing"
         if: ${{ env.KEYSTORE_PROPERTIES != '' }}

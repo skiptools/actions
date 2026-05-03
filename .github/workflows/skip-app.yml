@@ -33,6 +33,9 @@ on:
       brew-install:
         required: false
         type: string
+      skip-source:
+        required: false
+        type: string
       run-local-tests:
         required: false
         type: boolean
@@ -54,14 +57,15 @@ on:
         required: false
 jobs:
   skip-app:
-    runs-on: macos-15-intel
+    runs-on: macos-26
     timeout-minutes: 180
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
     steps:
       - uses: actions/checkout@v6
         with:
           submodules: 'recursive'
+          # need to fetch tags to be able to update the version in Skip.env
+          fetch-tags: true
+          fetch-depth: 0
 
       - name: "Setup"
         id: setup
@@ -109,18 +113,31 @@ jobs:
       - uses: skiptools/actions/setup-skip@v1
         with:
           verify-project: '.'
+          skip-source: '${{ inputs.skip-source }}'
           install-swift-android-sdk: ${{ steps.setup.outputs.skip-fuse }}
 
       - name: "Run Tests"
         if: ${{ inputs.run-local-tests == true && ! startsWith(github.ref, 'refs/tags/') }}
         run: test ! -d Tests || skip test
 
+      - name: "Create Android debug keystore"
+        run: |
+          if [ ! -f ~/.android/debug.keystore ]; then
+            mkdir -p ~/.android
+            keytool -genkeypair -v -keystore ~/.android/debug.keystore \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android -keypass android \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
       - name: "Export project"
         run: |
-          # need to run twice due to a bug with debug key availability
-          skip export -v --debug -d skip-export --show-tree --summary-file=$GITHUB_STEP_SUMMARY
-          skip export -v --release -d skip-export --show-tree --summary-file=$GITHUB_STEP_SUMMARY
+          skip export -d skip-export --verbose --release --appindex --show-tree --summary-file=$GITHUB_STEP_SUMMARY
           cp -a Package.resolved skip-export/
+
+      - name: "Validate appindex.json"
+        run: |
+          cat skip-export/appindex.json | jq .
 
       - name: "Setup Android App Signing"
         if: ${{ env.KEYSTORE_PROPERTIES != '' }}

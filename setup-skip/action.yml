@@ -5,12 +5,8 @@ branding:
   color: 'blue'
 
 inputs:
-  skip-version:
-    description: 'The version of the Skip toolchain to install'
-    required: false
-    default: 'latest'
   skip-source:
-    description: 'The Homebrew source to install skip from (formula or cask)'
+    description: 'The Homebrew source to install skip from (formula or cask or branch name)'
     required: false
     default: 'formula'
   run-doctor:
@@ -66,11 +62,22 @@ runs:
         # whether to install the canonical "skip" formula
         # or the skiptools cask tap version of the tool
         #export HOMEBREW_NO_AUTO_UPDATE=1
-        if [[ "${{ inputs.skip-source }}" == "formula" ]]; then
+        if [[ "${{ inputs.skip-source }}" == "formula" || "${{ inputs.skip-source }}" == "" ]]; then
           brew install skip
-        else
+        elif [[ "${{ inputs.skip-source }}" == "cask" ]]; then
           brew tap skiptools/skip
           brew install skiptools/skip/skip
+        else
+          # otherwise checkout and build the branch name in skip-source
+          cd ${TMPDIR}
+          git clone --recurse-submodules --branch "${{ inputs.skip-source }}" https://github.com/skiptools/skipstone.git
+          swift build --package-path skipstone/
+          mv skipstone/.build/debug/SkipRunner skipstone/.build/debug/skip
+          SKIPPATH="${PWD}/skipstone/.build/debug"
+          echo "${SKIPPATH}" >> $GITHUB_PATH
+          echo "SKIP_COMMAND_OVERRIDE=${SKIPPATH}/skip" >> $GITHUB_ENV
+          cd -
+          ${SKIPPATH}/skip version
         fi
 
         if [ ${RUNNER_OS} == 'macOS' ]; then
@@ -99,7 +106,7 @@ runs:
 
     - name: Initialize swiftly
       shell: bash
-      run: swiftly init --skip-install --assume-yes
+      run: brew install swiftly && swiftly init --skip-install --assume-yes
 
     - name: Install Host Swift Toolchain
       if: ${{ inputs.swift-version != '' }}

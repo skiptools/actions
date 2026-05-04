@@ -78,6 +78,9 @@ runs:
           echo "SKIP_COMMAND_OVERRIDE=${SKIPPATH}/skip" >> $GITHUB_ENV
           cd -
           ${SKIPPATH}/skip version
+
+          # also need swiftly, which otherwise comes in from brew dependency
+          brew install swiftly
         fi
 
         if [ ${RUNNER_OS} == 'macOS' ]; then
@@ -106,7 +109,7 @@ runs:
 
     - name: Initialize swiftly
       shell: bash
-      run: brew install swiftly && swiftly init --skip-install --assume-yes
+      run: swiftly init --skip-install --assume-yes
 
     - name: Install Host Swift Toolchain
       if: ${{ inputs.swift-version != '' }}

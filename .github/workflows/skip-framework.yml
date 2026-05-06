@@ -68,6 +68,10 @@ on:
       run-android-native-build:
         required: false
         type: string
+      swift-android-sdk-version:
+        required: false
+        type: string
+        default: "['']"
       emulator-api-level:
         required: false
         type: string
@@ -99,6 +103,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ${{ fromJson(inputs.runs-on) }}
+        android-sdk: ${{ fromJson(inputs.swift-android-sdk-version) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     #env:     
@@ -188,6 +193,7 @@ jobs:
           verify-project: '.'
           skip-source: '${{ inputs.skip-source }}'
           install-swift-android-sdk: ${{ steps.setup.outputs.skip-fuse }}
+          swift-android-sdk-version: ${{ matrix.android-sdk }}
 
       - name: Install Prerequisities
         if: ${{ inputs.brew-install != '' }}

@@ -120,7 +120,10 @@ jobs:
         if: ${{ inputs.run-local-tests == true && ! startsWith(github.ref, 'refs/tags/') }}
         run: test ! -d Tests || skip test
 
-      - name: "Create Android debug keystore"
+      # for release signing, if we are not using the Android
+      # KEYSTORE_PROPERTIES secrets, when we will fall back to using
+      # the debug key, which might not yet exist, so create it if needed
+      - name: "Configure Android debug keystore"
         run: |
           if [ ! -f ~/.android/debug.keystore ]; then
             mkdir -p ~/.android
@@ -130,16 +133,7 @@ jobs:
               -dname "CN=Android Debug,O=Android,C=US"
           fi
 
-      - name: "Export project"
-        run: |
-          skip export -d skip-export --verbose --release --appindex --show-tree --summary-file=$GITHUB_STEP_SUMMARY
-          cp -a Package.resolved skip-export/
-
-      - name: "Validate appindex.json"
-        run: |
-          cat skip-export/appindex.json | jq .
-
-      - name: "Setup Android App Signing"
+      - name: "Configure Android App Signing"
         if: ${{ env.KEYSTORE_PROPERTIES != '' }}
         env:
           KEYSTORE_JKS: ${{ secrets.KEYSTORE_JKS }}
@@ -148,7 +142,7 @@ jobs:
           echo -n "${KEYSTORE_JKS}" | base64 --decode > Android/app/keystore.jks
           echo -n "${KEYSTORE_PROPERTIES}" | base64 --decode > Android/app/keystore.properties
 
-      - name: "Setup Darwin App Signing"
+      - name: "Configure Darwin App Signing"
         uses: apple-actions/import-codesign-certs@v6
         if: ${{ env.APPLE_CERTIFICATES_P12 != '' }}
         env:
@@ -156,6 +150,15 @@ jobs:
         with:
           p12-file-base64: ${{ secrets.APPLE_CERTIFICATES_P12 }}
           p12-password: ${{ secrets.APPLE_CERTIFICATES_P12_PASSWORD }}
+
+      - name: "Export project"
+        run: |
+          skip export -d skip-export --verbose --release --appindex --show-tree --summary-file=$GITHUB_STEP_SUMMARY
+          cp -a Package.resolved skip-export/
+
+      - name: "Validate appindex.json"
+        run: |
+          cat skip-export/appindex.json | jq .
 
       - name: "Android Fastlane"
         if: ${{ ! startsWith(github.ref, 'refs/tags/') }}

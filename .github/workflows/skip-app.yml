@@ -42,12 +42,16 @@ on:
         default: true
       env:
         description: |
-          Pipe-separated list of KEY=VALUE environment variables to export
-          for every step in the job. Example: "SKIP_MODE=fuse|VERBOSE=1".
+          Newline-separated list of KEY=VALUE environment variables to export
+          for every step in the job. Pass via a YAML block scalar:
+
+              env: |
+                SKIP_MODE=fuse
+                VERBOSE=1
+
           Useful for app projects whose Package.swift switches dependencies on
-          an env var (e.g. SKIP_MODE for the merged showcase). Values that
-          contain a literal '|' are not supported; quote-as-text other shell
-          metacharacters since the value is treated as a plain string.
+          an env var (e.g. SKIP_MODE for the merged showcase). The value is
+          treated as plain text, so shell metacharacters are not interpreted.
         required: false
         type: string
         default: ''
@@ -78,10 +82,10 @@ jobs:
           fetch-tags: true
           fetch-depth: 0
 
-      # Parse the `env` workflow input (KEY=VALUE pairs separated by '|')
-      # and append each entry to $GITHUB_ENV so that it is exported for every
-      # subsequent step in this job, as well as for any child processes (gradle,
-      # swift, fastlane, skip, …) those steps spawn.
+      # Parse the `env` workflow input (one KEY=VALUE pair per line) and
+      # append each entry to $GITHUB_ENV so that it is exported for every
+      # subsequent step in this job, as well as for any child processes
+      # (gradle, swift, fastlane, skip, …) those steps spawn.
       #
       # The input is passed through an environment variable (not interpolated
       # into the script source) so that special characters in the value do not
@@ -92,14 +96,14 @@ jobs:
           SKIP_WORKFLOW_ENV_INPUT: ${{ inputs.env }}
         run: |
           set -euo pipefail
-          # Split on '|' rather than newlines so the input stays on a single
-          # YAML line at the call site.
-          IFS='|' read -r -a entries <<< "${SKIP_WORKFLOW_ENV_INPUT}"
-          for entry in "${entries[@]}"; do
-            # Trim leading/trailing whitespace; skip empty entries.
+          # Walk each line of the input; YAML block scalars and folded scalars
+          # both deliver newline-separated content here.
+          while IFS= read -r entry || [ -n "${entry}" ]; do
+            # Trim leading/trailing whitespace; skip empty lines and comments.
             entry="${entry#"${entry%%[![:space:]]*}"}"
             entry="${entry%"${entry##*[![:space:]]}"}"
             [ -z "${entry}" ] && continue
+            [[ "${entry}" == \#* ]] && continue
             if [[ "${entry}" != *=* ]]; then
               echo "::warning::Skipping malformed env entry (expected KEY=VALUE): ${entry}"
               continue
@@ -114,7 +118,7 @@ jobs:
             fi
             echo "Setting workflow env: ${key}"
             echo "${key}=${value}" >> "${GITHUB_ENV}"
-          done
+          done <<< "${SKIP_WORKFLOW_ENV_INPUT}"
 
       - name: "Setup"
         id: setup

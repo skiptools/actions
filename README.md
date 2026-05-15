@@ -169,38 +169,42 @@ jobs:
 | `brew-install` | Additional Homebrew packages to install before building | `string` | (none) |
 | `skip-source` | Homebrew source for installing the Skip CLI (`formula`, `cask`, or a branch name) | `string` | (none) |
 | `run-local-tests` | Run local tests with `skip test` (skipped on tag pushes) | `boolean` | `true` |
-| `env` | Pipe-separated `KEY=VALUE` pairs to export for every step in the job | `string` | `''` |
+| `env` | Newline-separated `KEY=VALUE` pairs to export for every step in the job | `string` | `''` |
 
 #### Passing environment variables with `env`
 
-The `env` input takes a single string of `KEY=VALUE` pairs separated by `|`,
-and exports each pair (via `$GITHUB_ENV`) so that all subsequent steps —
-including the Swift, Gradle, Fastlane, and `skip` invocations — see the
-variables. This is useful for app projects whose `Package.swift` or
-`Skip.env` toggle behaviour on an environment variable (for example, the
-merged Skip showcase uses `SKIP_MODE` to swap between Skip Lite and Skip Fuse
-dependency closures).
+The `env` input takes one `KEY=VALUE` pair per line and exports each pair
+(via `$GITHUB_ENV`) so that all subsequent steps — including the Swift,
+Gradle, Fastlane, and `skip` invocations — see the variables. This is useful
+for app projects whose `Package.swift` or `Skip.env` toggle behaviour on an
+environment variable (for example, the merged Skip showcase uses `SKIP_MODE`
+to swap between Skip Lite and Skip Fuse dependency closures).
+
+Use a YAML block scalar (`|`) to keep the lines readable:
 
 ```yaml
 jobs:
   build-lite:
     uses: skiptools/actions/.github/workflows/skip-app.yml@v1
     with:
-      env: "SKIP_MODE=lite"
+      env: |
+        SKIP_MODE=lite
 
   build-fuse:
     uses: skiptools/actions/.github/workflows/skip-app.yml@v1
     with:
-      env: "SKIP_MODE=fuse|SKIP_DEPENDENCY_ROOT=/Users/runner/work/_local"
+      env: |
+        SKIP_MODE=fuse
+        SKIP_DEPENDENCY_ROOT=/Users/runner/work/_local
 ```
+
+A single pair can also be written inline on the same line as `env:`.
 
 Notes:
 
-- The delimiter is the pipe character `|`. Values that need to contain a
-  literal `|` are not supported; use a different mechanism (e.g. a secret or
-  a separate matrix dimension) for those.
-- Only the first `=` in each entry is treated as the key/value separator, so
-  values may contain additional `=` characters.
+- One pair per line. Blank lines and lines starting with `#` are ignored.
+- Only the first `=` on each line is treated as the key/value separator, so
+  values may contain additional `=` characters (e.g. URLs, base64 padding).
 - Keys must match `[A-Za-z_][A-Za-z0-9_]*`; malformed entries are skipped with
   a workflow warning rather than failing the build.
 - The variables are set after `actions/checkout` and before any other step,
@@ -221,7 +225,8 @@ jobs:
         mode: [lite, fuse]
     uses: skiptools/actions/.github/workflows/skip-app.yml@v1
     with:
-      env: "SKIP_MODE=${{ matrix.mode }}"
+      env: |
+        SKIP_MODE=${{ matrix.mode }}
     secrets: inherit
 ```
 

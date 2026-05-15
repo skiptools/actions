@@ -167,7 +167,63 @@ jobs:
 | Input | Description | Type | Default |
 |-------|-------------|------|---------|
 | `brew-install` | Additional Homebrew packages to install before building | `string` | (none) |
+| `skip-source` | Homebrew source for installing the Skip CLI (`formula`, `cask`, or a branch name) | `string` | (none) |
 | `run-local-tests` | Run local tests with `skip test` (skipped on tag pushes) | `boolean` | `true` |
+| `env` | Pipe-separated `KEY=VALUE` pairs to export for every step in the job | `string` | `''` |
+
+#### Passing environment variables with `env`
+
+The `env` input takes a single string of `KEY=VALUE` pairs separated by `|`,
+and exports each pair (via `$GITHUB_ENV`) so that all subsequent steps —
+including the Swift, Gradle, Fastlane, and `skip` invocations — see the
+variables. This is useful for app projects whose `Package.swift` or
+`Skip.env` toggle behaviour on an environment variable (for example, the
+merged Skip showcase uses `SKIP_MODE` to swap between Skip Lite and Skip Fuse
+dependency closures).
+
+```yaml
+jobs:
+  build-lite:
+    uses: skiptools/actions/.github/workflows/skip-app.yml@v1
+    with:
+      env: "SKIP_MODE=lite"
+
+  build-fuse:
+    uses: skiptools/actions/.github/workflows/skip-app.yml@v1
+    with:
+      env: "SKIP_MODE=fuse|SKIP_DEPENDENCY_ROOT=/Users/runner/work/_local"
+```
+
+Notes:
+
+- The delimiter is the pipe character `|`. Values that need to contain a
+  literal `|` are not supported; use a different mechanism (e.g. a secret or
+  a separate matrix dimension) for those.
+- Only the first `=` in each entry is treated as the key/value separator, so
+  values may contain additional `=` characters.
+- Keys must match `[A-Za-z_][A-Za-z0-9_]*`; malformed entries are skipped with
+  a workflow warning rather than failing the build.
+- The variables are set after `actions/checkout` and before any other step,
+  so the `Setup` step (which reads `Skip.env`, derives version strings, etc.)
+  also sees them.
+
+#### Building both Skip Lite and Skip Fuse in one workflow
+
+`env` composes naturally with `strategy.matrix`, which is the recommended way
+to build a merged app project against both modes from a single CI workflow:
+
+```yaml
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [lite, fuse]
+    uses: skiptools/actions/.github/workflows/skip-app.yml@v1
+    with:
+      env: "SKIP_MODE=${{ matrix.mode }}"
+    secrets: inherit
+```
 
 ### Secrets
 

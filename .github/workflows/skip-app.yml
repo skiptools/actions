@@ -40,6 +40,17 @@ on:
         required: false
         type: boolean
         default: true
+      env:
+        description: |
+          Pipe-separated list of KEY=VALUE environment variables to export
+          for every step in the job. Example: "SKIP_MODE=fuse|VERBOSE=1".
+          Useful for app projects whose Package.swift switches dependencies on
+          an env var (e.g. SKIP_MODE for the merged showcase). Values that
+          contain a literal '|' are not supported; quote-as-text other shell
+          metacharacters since the value is treated as a plain string.
+        required: false
+        type: string
+        default: ''
     secrets:
       KEYSTORE_PROPERTIES:
         required: false
@@ -66,6 +77,44 @@ jobs:
           # need to fetch tags to be able to update the version in Skip.env
           fetch-tags: true
           fetch-depth: 0
+
+      # Parse the `env` workflow input (KEY=VALUE pairs separated by '|')
+      # and append each entry to $GITHUB_ENV so that it is exported for every
+      # subsequent step in this job, as well as for any child processes (gradle,
+      # swift, fastlane, skip, …) those steps spawn.
+      #
+      # The input is passed through an environment variable (not interpolated
+      # into the script source) so that special characters in the value do not
+      # turn into shell injection.
+      - name: "Configure workflow environment"
+        if: ${{ inputs.env != '' }}
+        env:
+          SKIP_WORKFLOW_ENV_INPUT: ${{ inputs.env }}
+        run: |
+          set -euo pipefail
+          # Split on '|' rather than newlines so the input stays on a single
+          # YAML line at the call site.
+          IFS='|' read -r -a entries <<< "${SKIP_WORKFLOW_ENV_INPUT}"
+          for entry in "${entries[@]}"; do
+            # Trim leading/trailing whitespace; skip empty entries.
+            entry="${entry#"${entry%%[![:space:]]*}"}"
+            entry="${entry%"${entry##*[![:space:]]}"}"
+            [ -z "${entry}" ] && continue
+            if [[ "${entry}" != *=* ]]; then
+              echo "::warning::Skipping malformed env entry (expected KEY=VALUE): ${entry}"
+              continue
+            fi
+            key="${entry%%=*}"
+            value="${entry#*=}"
+            # Only allow conventional identifier characters in the key so this
+            # cannot be coerced into writing arbitrary GITHUB_ENV directives.
+            if [[ ! "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+              echo "::warning::Skipping env entry with invalid key '${key}'"
+              continue
+            fi
+            echo "Setting workflow env: ${key}"
+            echo "${key}=${value}" >> "${GITHUB_ENV}"
+          done
 
       - name: "Setup"
         id: setup

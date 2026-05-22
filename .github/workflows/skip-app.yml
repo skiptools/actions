@@ -55,6 +55,27 @@ on:
         required: false
         type: string
         default: ''
+      derived-source-branch:
+        description: |
+          When set, the workflow extracts `skip-export/<MODULE>-project.zip`
+          into `Android/derived-src/` and force-pushes the result (HEAD plus
+          the derived sources) to this branch in the same repository. Only
+          runs on pushes to `main` or to a semver tag. The branch is treated
+          as a mirror of HEAD at the time of the run: it is created if absent
+          and force-pushed if present, so consumers (e.g. F-Droid build
+          metadata) can always check out the current derived form of the app.
+        required: false
+        type: string
+        default: ''
+      derived-source-tag-suffix:
+        description: |
+          When `derived-source-branch` is set and the workflow was triggered
+          by a tag push (e.g. `1.2.3`), additionally create and force-push a
+          `<tag>-<suffix>` tag (e.g. `1.2.3-fdroid` for suffix `fdroid`)
+          pointing at the new derived-branch commit.
+        required: false
+        type: string
+        default: ''
     secrets:
       KEYSTORE_PROPERTIES:
         required: false
@@ -208,6 +229,93 @@ jobs:
         run: |
           skip export -d skip-export --verbose --release --appindex --show-tree --summary-file=$GITHUB_STEP_SUMMARY
           cp -a Package.resolved skip-export/
+
+      # When `derived-source-branch` is configured, extract the project zip
+      # produced by `skip export` into Android/derived-src/, then force-push
+      # the current HEAD plus those files to that branch. The branch is
+      # therefore always a mirror of the most recent main/tag build plus the
+      # derived sources, which is the input format consumed by build systems
+      # like F-Droid that need to see the transpiled Kotlin/Gradle output in
+      # the repository itself.
+      #
+      # Runs only on pushes to `main` or to a semver tag, so feature
+      # branches and pull requests don't churn the derived branch. The bot
+      # commit author is the GitHub Actions bot, and the push uses the
+      # workflow's `${{ github.token }}` (which requires the caller workflow
+      # to declare `permissions: contents: write`).
+      - name: "Update derived source branch"
+        if: ${{ inputs.derived-source-branch != '' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')) }}
+        env:
+          DERIVED_BRANCH: ${{ inputs.derived-source-branch }}
+          DERIVED_TAG_SUFFIX: ${{ inputs.derived-source-tag-suffix }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          PROJECT_ZIP="skip-export/${SKIP_MODULE}-project.zip"
+          if [ ! -f "${PROJECT_ZIP}" ]; then
+            echo "::error::Expected ${PROJECT_ZIP} produced by 'skip export' was not found"
+            exit 1
+          fi
+
+          # Extract the zip into a temp folder. The archive is rooted at a
+          # single directory named after the Skip module, which we strip so
+          # the working layout matches the project's Android source tree.
+          TMP_DERIVED=$(mktemp -d)
+          unzip -q "${PROJECT_ZIP}" -d "${TMP_DERIVED}"
+          ROOT_ENTRY=$(ls "${TMP_DERIVED}")
+          if [ "$(printf '%s\n' "${ROOT_ENTRY}" | wc -l)" -ne 1 ]; then
+            echo "::error::Expected exactly one top-level folder inside ${PROJECT_ZIP}; got: ${ROOT_ENTRY}"
+            exit 1
+          fi
+
+          # Replace Android/derived-src wholesale so removed files in the
+          # latest export don't linger from a previous run.
+          rm -rf Android/derived-src
+          mkdir -p Android/derived-src
+          # The trailing /. copies contents (not the directory itself).
+          cp -a "${TMP_DERIVED}/${ROOT_ENTRY}/." Android/derived-src/
+          rm -rf "${TMP_DERIVED}"
+
+          # Configure the bot identity for the commit that will end up on
+          # the derived branch and tag.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Force-add Android/derived-src so the commit still includes the
+          # extracted files even if the project's .gitignore excludes them.
+          # `git add -u` picks up tracked-file edits made by earlier steps
+          # (e.g. the version bumps the Setup step writes into Skip.env).
+          git add -A -f Android/derived-src
+          git add -u
+
+          SOURCE_REF="${GITHUB_REF#refs/*/}"
+          SOURCE_SHA=$(git rev-parse HEAD)
+          if git diff --cached --quiet; then
+            # Nothing changed since the last derived push; reuse the local
+            # HEAD as-is when we force-push so the branch still tracks the
+            # latest source commit.
+            echo "Derived sources are already in sync; pushing source HEAD unchanged."
+          else
+            git commit -m "Derived sources for ${SOURCE_REF} (${SOURCE_SHA})"
+          fi
+
+          # Force-push the (possibly new) HEAD to the configured derived
+          # branch. This intentionally rewrites the branch — its job is to
+          # mirror the source ref plus the derived-src/, not to accumulate
+          # history of its own.
+          git push origin "HEAD:refs/heads/${DERIVED_BRANCH}" --force
+
+          # On tag pushes, optionally apply a suffixed tag at the new
+          # derived-branch tip so downstream tooling can pin to a specific
+          # release of the derived form (e.g. `1.2.3-fdroid`).
+          if [ -n "${DERIVED_TAG_SUFFIX}" ] && [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            SOURCE_TAG="${GITHUB_REF#refs/tags/}"
+            DERIVED_TAG="${SOURCE_TAG}-${DERIVED_TAG_SUFFIX}"
+            echo "Tagging derived branch as ${DERIVED_TAG}"
+            git tag -f "${DERIVED_TAG}"
+            git push origin "refs/tags/${DERIVED_TAG}" --force
+          fi
 
       - name: "Validate appindex.json"
         run: |

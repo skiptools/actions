@@ -96,6 +96,21 @@ on:
         # alternative: use skip android emulator create/launch
         # https://github.com/skiptools/skip/pull/574
         #default: 'skip'
+      env:
+        description: |
+          Newline-separated list of KEY=VALUE environment variables to export
+          for every step in the job. Pass via a YAML block scalar:
+
+              env: |
+                SKIP_MODE=fuse
+                VERBOSE=1
+
+          Useful for framework projects whose Package.swift switches dependencies
+          on an env var. The value is treated as plain text, so shell
+          metacharacters are not interpreted.
+        required: false
+        type: string
+        default: ''
 
 jobs:
   skip-framework:
@@ -113,6 +128,44 @@ jobs:
       - uses: actions/checkout@v6
         with:
           submodules: 'recursive'
+
+      # Parse the `env` workflow input (one KEY=VALUE pair per line) and
+      # append each entry to $GITHUB_ENV so that it is exported for every
+      # subsequent step in this job, as well as for any child processes
+      # (gradle, swift, skip, …) those steps spawn.
+      #
+      # The input is passed through an environment variable (not interpolated
+      # into the script source) so that special characters in the value do not
+      # turn into shell injection.
+      - name: "Configure workflow environment"
+        if: ${{ inputs.env != '' }}
+        env:
+          SKIP_WORKFLOW_ENV_INPUT: ${{ inputs.env }}
+        run: |
+          set -euo pipefail
+          # Walk each line of the input; YAML block scalars and folded scalars
+          # both deliver newline-separated content here.
+          while IFS= read -r entry || [ -n "${entry}" ]; do
+            # Trim leading/trailing whitespace; skip empty lines and comments.
+            entry="${entry#"${entry%%[![:space:]]*}"}"
+            entry="${entry%"${entry##*[![:space:]]}"}"
+            [ -z "${entry}" ] && continue
+            [[ "${entry}" == \#* ]] && continue
+            if [[ "${entry}" != *=* ]]; then
+              echo "::warning::Skipping malformed env entry (expected KEY=VALUE): ${entry}"
+              continue
+            fi
+            key="${entry%%=*}"
+            value="${entry#*=}"
+            # Only allow conventional identifier characters in the key so this
+            # cannot be coerced into writing arbitrary GITHUB_ENV directives.
+            if [[ ! "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+              echo "::warning::Skipping env entry with invalid key '${key}'"
+              continue
+            fi
+            echo "Setting workflow env: ${key}"
+            echo "${key}=${value}" >> "${GITHUB_ENV}"
+          done <<< "${SKIP_WORKFLOW_ENV_INPUT}"
 
       - name: Verify License Headers
         if: ${{ startsWith(github.event.repository.name, 'skip-') }}

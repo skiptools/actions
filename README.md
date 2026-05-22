@@ -109,6 +109,7 @@ jobs:
 | `emulator-profile` | Android emulator hardware profile | `string` | `'Nexus 4'` |
 | `emulator-target` | Android emulator system image target | `string` | `'default'` |
 | `emulator-launcher` | Emulator launcher to use (`reactivecircus` or `skip`) | `string` | `'reactivecircus'` |
+| `env` | Newline-separated `KEY=VALUE` pairs to export for every step in the job (see [Passing environment variables](#passing-environment-variables-with-env) under the skip-app workflow for full syntax) | `string` | `''` |
 
 ### What It Does
 
@@ -175,10 +176,12 @@ jobs:
 
 #### Passing environment variables with `env`
 
+> The `env` input is also available on the [skip-framework workflow](#skip-framework-workflow) and behaves identically there.
+
 The `env` input takes one `KEY=VALUE` pair per line and exports each pair
 (via `$GITHUB_ENV`) so that all subsequent steps — including the Swift,
 Gradle, Fastlane, and `skip` invocations — see the variables. This is useful
-for app projects whose `Package.swift` or `Skip.env` toggle behaviour on an
+for projects whose `Package.swift` or `Skip.env` toggle behaviour on an
 environment variable (for example, the merged Skip showcase uses `SKIP_MODE`
 to swap between Skip Lite and Skip Fuse dependency closures).
 
@@ -234,7 +237,7 @@ jobs:
 
 #### Mirroring derived sources to a branch
 
-Some downstream build systems — notably [F-Droid](https://f-droid.org) — need
+Some downstream build systems need
 the transpiled Kotlin/Gradle sources committed to the repository. The
 `derived-source-branch` input automates this: after `skip export` produces
 `skip-export/<MODULE>-project.zip`, the workflow extracts that zip into
@@ -246,20 +249,20 @@ jobs:
   call-workflow:
     uses: skiptools/actions/.github/workflows/skip-app.yml@v1
     with:
-      derived-source-branch: fdroid
-      derived-source-tag-suffix: fdroid
+      derived-source-branch: ejected
+      derived-source-tag-suffix: ejected
 ```
 
 With this configuration:
 
 - On every push to `main`, the workflow runs `skip export`, drops the
   extracted derived sources into `Android/derived-src/`, and force-pushes
-  `<source HEAD> + Android/derived-src/` to the `fdroid` branch (creating it
+  `<source HEAD> + Android/derived-src/` to the `ejected` branch (creating it
   on first run). The branch is therefore always a clean mirror of `main` at
   that point in time plus the freshly generated derived sources — no
   long-lived history of its own.
 - On a semver tag push (e.g. `1.2.3`), the same derived-branch update runs
-  for the tagged commit, and a new `1.2.3-fdroid` tag is force-published
+  for the tagged commit, and a new `1.2.3-ejected` tag is force-published
   pointing at the resulting derived-branch commit. Without
   `derived-source-tag-suffix`, the tag step is skipped.
 - On any other ref (feature branches, pull requests), the step is a no-op.

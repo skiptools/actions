@@ -120,7 +120,7 @@ jobs:
         os: ${{ fromJson(inputs.runs-on) }}
         android-sdk: ${{ fromJson(inputs.swift-android-sdk-version) }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     #env:     
       #DEVELOPER_DIR: /Applications/Xcode_26.1.app/Contents/Developer
       #DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer

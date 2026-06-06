@@ -168,7 +168,7 @@ jobs:
           done <<< "${SKIP_WORKFLOW_ENV_INPUT}"
 
       - name: Verify License Headers
-        if: ${{ startsWith(github.event.repository.name, 'skip-') }}
+        if: ${{ startsWith(github.event.repository.name, 'skip-') && github.repository_owner == 'skiptools' }}
         run: |
           FAILED=0
           FAILED_FILES=()

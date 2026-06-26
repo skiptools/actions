@@ -125,7 +125,7 @@ jobs:
       #DEVELOPER_DIR: /Applications/Xcode_26.1.app/Contents/Developer
       #DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
 
@@ -348,7 +348,7 @@ jobs:
 
       - name: Cache ReactiveCircus Android emulator snapshot
         if: ${{ inputs.emulator-launcher != 'skip' && inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && env.RUNNER_ARCH != 'ARM64' }}
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         id: avd-cache
         with:
           path: |

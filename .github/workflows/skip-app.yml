@@ -30,6 +30,10 @@ name: "Skip App CI"
 on:
   workflow_call:
     inputs:
+      repository:
+        required: false
+        type: string
+        description: "Repository to checkout (owner/repo). Defaults to the calling repository."
       brew-install:
         required: false
         type: string
@@ -98,6 +102,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          repository: ${{ inputs.repository || github.repository }}
           submodules: 'recursive'
           # need to fetch tags to be able to update the version in Skip.env
           fetch-tags: true

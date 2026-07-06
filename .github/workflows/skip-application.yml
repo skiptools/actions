@@ -1,0 +1,724 @@
+# This workflow is meant to be called remotely from a Skip app project.
+#
+# The action will build and test both the Swift and Gradle projects
+# transpiled through Skip.
+#
+# When tagged with a semantic version (e.g., "1.2.3"), the action will
+# create and distribute release .apk and .ipa artifacts from the project.
+#
+# Jobs:
+#   build-app       – checkout, test, skip export, upload artifacts
+#   run-ios-app     – install exported app on iOS simulator, run Maestro tests per locale
+#   run-android-app – install exported app on Android emulator, run Maestro tests per locale
+#   release-ios-app – sign and submit iOS app via Fastlane (tag only, secrets required)
+#   release-android-app – sign and submit Android app via Fastlane (tag only, secrets required)
+#   github-release  – create GitHub release with all artifacts and screenshots
+#
+# An example invocation script is as follows, which runs for
+# every push, every PR, every semver tag, and every day at noon GMT:
+#
+# name: skipapp
+# on:
+#   push:
+#     branches: '*'
+#     tags: "[0-9]+.[0-9]+.[0-9]+"
+#   schedule:
+#     - cron: '0 12 * * *'
+#   workflow_dispatch:
+#   pull_request:
+#
+# permissions:
+#   contents: write
+#
+# jobs:
+#   call-workflow:
+#     uses: skiptools/actions/.github/workflows/skip-app.yml@v1
+#
+name: "Skip Application CI"
+on:
+  workflow_call:
+    inputs:
+      repository:
+        required: false
+        type: string
+        description: "Repository to checkout (owner/repo). Defaults to the calling repository."
+      brew-install:
+        required: false
+        type: string
+      run-local-tests:
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      KEYSTORE_PROPERTIES:
+        required: false
+      KEYSTORE_JKS:
+        required: false
+      GOOGLE_PLAY_APIKEY:
+        required: false
+      APPLE_APPSTORE_APIKEY:
+        required: false
+      APPLE_CERTIFICATES_P12:
+        required: false
+      APPLE_CERTIFICATES_P12_PASSWORD:
+        required: false
+      APPLE_MOBILEPROVISION:
+        required: false
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────
+  # 1. Build, test, and export the app
+  # ───────────────────────────────────────────────────────────────────
+  build-app:
+    runs-on: macos-26
+    timeout-minutes: 180
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    outputs:
+      reltag: ${{ steps.setup.outputs.reltag }}
+      skip-module: ${{ steps.setup.outputs.skip-module }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: ${{ inputs.repository || github.repository }}
+          submodules: 'recursive'
+
+      - name: "Setup"
+        id: setup
+        run: |
+          TAG=${GITHUB_REF#refs/*/}
+          echo "reltag=${TAG:-'dev'}" >> $GITHUB_OUTPUT
+
+          if [[ "${RUNNER_ARCH}" == 'ARM64' ]]; then
+            echo "HOMEBREW_PREFIX=/opt/homebrew" >> $GITHUB_ENV
+          else
+            echo "HOMEBREW_PREFIX=/usr/local" >> $GITHUB_ENV
+          fi
+
+          echo "COMMIT_DATE=$(git log -1 --format=%ad --date=iso-strict ${TAG})" >> $GITHUB_ENV
+
+          SKIP_MODULE=$(basename Darwin/*.xcodeproj .xcodeproj)
+          echo "skip-module=${SKIP_MODULE}" >> $GITHUB_OUTPUT
+          echo "SKIP_MODULE=${SKIP_MODULE}" >> $GITHUB_ENV
+
+          sed -i '' "s;MARKETING_VERSION = .*;MARKETING_VERSION = $(git describe --tags --abbrev=0 --match '[0-9]*\.[0-9]*\.[0-9]*' --first-parent);g" Skip.env
+          sed -i '' "s;PRODUCT_VERSION = .*;PRODUCT_VERSION = $(git rev-list --count HEAD);g" Skip.env
+
+          yq -e '.skip.mode' Sources/*/Skip/skip.yml >> /dev/null && echo "skip-fuse=true" >> $GITHUB_OUTPUT || echo "Native toolchain not needed"
+
+      - uses: skiptools/actions/setup-skip@v1
+        with:
+          verify-project: '.'
+          install-swift-android-sdk: ${{ steps.setup.outputs.skip-fuse }}
+          swift-android-sdk-version: nightly-6.3
+
+      - name: "Build Project"
+        #run: swift build
+        # not all projects build on macOS, so we need to build for iOS
+        run: xcrun swift build --triple arm64-apple-ios --sdk "$(xcrun --sdk iphoneos --show-sdk-path)"
+
+      - name: "Test Project"
+        if: ${{ inputs.run-local-tests == true && ! startsWith(github.ref, 'refs/tags/') }}
+        run: test ! -d Tests || skip test
+
+      # ideally we would skip the debug release, but if we don't do it, the debug keystore won't be automatically found and used
+      - name: "Export project (debug)"
+        run: |
+          skip export -v --ios --ios-sim --android --debug -d skip-export --show-tree --summary-file=$GITHUB_STEP_SUMMARY
+
+      - name: "Export project (release)"
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          skip export -v --release -d skip-export --show-tree --summary-file=$GITHUB_STEP_SUMMARY
+
+      - name: "Process Package.resolved"
+        run: |
+          cat Package.resolved
+          mkdir -p skip-export
+          cp -a Package.resolved skip-export/
+
+      - name: "Upload build artifacts"
+        uses: actions/upload-artifact@v6
+        with:
+          name: skip-export
+          path: skip-export/
+
+      - name: "Upload project sources"
+        uses: actions/upload-artifact@v6
+        with:
+          name: project-sources
+          path: |
+            Darwin/
+            Android/
+            Skip.env
+
+  # ───────────────────────────────────────────────────────────────────
+  # 2a. Run iOS app on simulator with Maestro tests
+  # ───────────────────────────────────────────────────────────────────
+  run-ios-app:
+    needs: build-app
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - name: "Download build artifacts"
+        uses: actions/download-artifact@v6
+        with:
+          name: skip-export
+          path: skip-export/
+
+      - name: "Download project sources"
+        uses: actions/download-artifact@v6
+        with:
+          name: project-sources
+
+      - name: "Install Maestro"
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "${HOME}/.maestro/bin" >> $GITHUB_PATH
+
+      - name: "Boot iOS Simulator"
+        id: simulator
+        run: |
+          # Create and boot a simulator
+          DEVICE_ID=$(xcrun simctl create "MaestroTest" "iPhone Air")
+          echo "device-id=${DEVICE_ID}" >> $GITHUB_OUTPUT
+          xcrun simctl boot "${DEVICE_ID}"
+          # Wait for the simulator to be ready
+          xcrun simctl bootstatus "${DEVICE_ID}"
+
+      - name: "Install app on simulator"
+        run: |
+          # Unzip the .app bundle (zipped to preserve symlinks during artifact transfer)
+          APP_ZIP=$(find skip-export -name "*-Simulator-Debug.app.zip" | head -1)
+          if [ -n "${APP_ZIP}" ]; then
+            unzip -o "${APP_ZIP}" -d skip-export/
+          fi
+
+          # Find the .app bundle from the export (debug build for testing)
+          APP_PATH=$(find skip-export -name "*.app" -type d | head -1)
+          if [ -z "${APP_PATH}" ]; then
+            echo "No .app bundle found in skip-export"
+            exit 1
+          fi
+          xcrun simctl install "${{ steps.simulator.outputs.device-id }}" "${APP_PATH}"
+
+      - name: "Ensure Maestro test flows exist"
+        run: |
+          if [ ! -d Darwin/fastlane/Maestro ] || [ -z "$(ls Darwin/fastlane/Maestro/*.yaml Darwin/fastlane/Maestro/*.yml 2>/dev/null)" ]; then
+            mkdir -p Darwin/fastlane/Maestro
+            BUNDLE_ID=$(grep "^PRODUCT_BUNDLE_IDENTIFIER" Skip.env | cut -d'=' -f2 | tr -d ' ')
+            cat > Darwin/fastlane/Maestro/launch-and-screenshot.yaml <<FLOWEOF
+          appId: ${BUNDLE_ID}
+          ---
+          - launchApp
+          - waitForAnimationToEnd
+          - takeScreenshot: Screen-00
+          FLOWEOF
+          fi
+
+      - name: "Collect locales"
+        id: locales
+        run: |
+          LOCALES=""
+          if [ -d Darwin/fastlane/metadata ]; then
+            for dir in Darwin/fastlane/metadata/*/; do
+              locale=$(basename "$dir")
+              # Skip non-locale directories (like 'default' or 'review_information')
+              if [[ "${locale}" =~ ^[a-z]{2}[-_] ]] || [[ "${locale}" =~ ^[a-z]{2}$ ]]; then
+                LOCALES="${LOCALES} ${locale}"
+              fi
+            done
+          fi
+          if [ -z "${LOCALES}" ]; then
+            LOCALES="en-US"
+          fi
+          echo "locales=${LOCALES}" >> $GITHUB_OUTPUT
+
+      - name: "Run Maestro tests for each locale"
+        env:
+          DEVICE_ID: ${{ steps.simulator.outputs.device-id }}
+        run: |
+          mkdir -p screenshots
+          export MAESTRO_CLI_NO_ANALYTICS=1
+          LOCALES="${{ steps.locales.outputs.locales }}"
+
+          for LOCALE in ${LOCALES}; do
+            echo "::group::Running Maestro tests for locale ${LOCALE}"
+
+            # Change simulator locale and restart SpringBoard
+            # Convert locale format (e.g., en-US -> en_US for simctl)
+            LANG_CODE="${LOCALE%[-_]*}"
+            REGION_CODE="${LOCALE#*[-_]}"
+            xcrun simctl spawn "${DEVICE_ID}" defaults write -g AppleLanguages -array "${LANG_CODE}"
+            xcrun simctl spawn "${DEVICE_ID}" defaults write -g AppleLocale "${LANG_CODE}_${REGION_CODE}"
+            # Restart SpringBoard to apply locale change
+            xcrun simctl spawn "${DEVICE_ID}" launchctl stop com.apple.SpringBoard 2>/dev/null || true
+            sleep 3
+
+            # Run each Maestro flow
+            for FLOW in Darwin/fastlane/Maestro/*.yaml Darwin/fastlane/Maestro/*.yml; do
+              [ -f "${FLOW}" ] || continue
+              echo "Running flow: ${FLOW} (locale: ${LOCALE})"
+              maestro --platform ios --device "${DEVICE_ID}" test "${FLOW}" --test-output-dir "screenshots/${LOCALE}"
+            done
+
+            echo "::endgroup::"
+          done
+
+      - name: "Rename screenshots for flat upload"
+        run: |
+          find . -name '*.png'
+          mkdir -p ios-screenshots
+          for LOCALE_DIR in screenshots/*/; do
+            LOCALE=$(basename "${LOCALE_DIR}")
+            INDEX=0
+            for IMG in "${LOCALE_DIR}"*.png "${LOCALE_DIR}"**/*.png; do
+              [ -f "${IMG}" ] || continue
+              PADDED=$(printf "%02d" ${INDEX})
+              cp "${IMG}" "ios-screenshots/Screen-${PADDED}-iOS-${LOCALE}.png"
+              INDEX=$((INDEX + 1))
+            done
+          done
+          # Also grab any screenshots from the Maestro output root
+          INDEX=0
+          for IMG in screenshots/*.png; do
+            [ -f "${IMG}" ] || continue
+            PADDED=$(printf "%02d" ${INDEX})
+            cp -v "${IMG}" "ios-screenshots/Screen-${PADDED}-iOS-default.png"
+            INDEX=$((INDEX + 1))
+          done
+
+      - name: "Shutdown simulator"
+        if: always()
+        run: xcrun simctl shutdown "${{ steps.simulator.outputs.device-id }}" 2>/dev/null || true
+
+      - name: "Upload iOS screenshots"
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: ios-screenshots
+          path: ios-screenshots/
+
+  # ───────────────────────────────────────────────────────────────────
+  # 2b. Run Android app on emulator with Maestro tests
+  # ───────────────────────────────────────────────────────────────────
+  run-android-app:
+    needs: build-app
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: "Download build artifacts"
+        uses: actions/download-artifact@v6
+        with:
+          name: skip-export
+          path: skip-export/
+
+      - name: "Download project sources"
+        uses: actions/download-artifact@v6
+        with:
+          name: project-sources
+
+      - name: "Enable KVM"
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: "Install Maestro"
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "${HOME}/.maestro/bin" >> $GITHUB_PATH
+
+      - name: "Ensure Maestro test flows exist"
+        run: |
+          if [ ! -d Android/fastlane/Maestro ] || [ -z "$(ls Android/fastlane/Maestro/*.yaml Android/fastlane/Maestro/*.yml 2>/dev/null)" ]; then
+            mkdir -p Android/fastlane/Maestro
+            #PACKAGE_NAME=$(grep "^ANDROID_PACKAGE_NAME" Skip.env | cut -d'=' -f2 | tr -d ' ')
+            PACKAGE_NAME=$(grep "^PRODUCT_BUNDLE_IDENTIFIER" Skip.env | cut -d'=' -f2 | tr -d ' ' | tr '-' '_')
+            cat > Android/fastlane/Maestro/launch-and-screenshot.yaml <<FLOWEOF
+          appId: ${PACKAGE_NAME}
+          ---
+          - launchApp
+          - waitForAnimationToEnd
+          - takeScreenshot: Screen-00
+          FLOWEOF
+          fi
+
+      - name: "Collect locales"
+        id: locales
+        run: |
+          LOCALES=""
+          if [ -d Android/fastlane/metadata/android ]; then
+            for dir in Android/fastlane/metadata/android/*/; do
+              locale=$(basename "$dir")
+              if [[ "${locale}" =~ ^[a-z]{2}[-_] ]] || [[ "${locale}" =~ ^[a-z]{2}$ ]]; then
+                LOCALES="${LOCALES} ${locale}"
+              fi
+            done
+          fi
+          if [ -z "${LOCALES}" ]; then
+            LOCALES="en-US"
+          fi
+          echo "locales=${LOCALES}" >> $GITHUB_OUTPUT
+
+      - name: "Prepare Maestro script"
+        run: |
+          cat > maestro.sh <<'EOF'
+          export MAESTRO_CLI_NO_ANALYTICS=1
+
+          mkdir -p screenshots
+
+          # Enable root access so setprop commands can modify system properties
+          adb root || true
+          adb wait-for-device
+
+          # Install the APK
+          APK_PATH=$(find skip-export -name "*-release.apk" -o -name "*-debug.apk" | head -1)
+          if [ -z "${APK_PATH}" ]; then
+            APK_PATH=$(find skip-export -name "*.apk" | head -1)
+          fi
+          if [ -z "${APK_PATH}" ]; then
+            echo "No APK found in skip-export"
+            exit 1
+          fi
+          adb install "${APK_PATH}"
+
+          LOCALES="${{ steps.locales.outputs.locales }}"
+
+          for LOCALE in ${LOCALES}; do
+            echo "::group::Running Maestro tests for locale ${LOCALE}"
+
+            # Change emulator locale
+            LANG_CODE="${LOCALE%[-_]*}"
+            REGION_CODE="${LOCALE#*[-_]}"
+
+            adb shell "setprop persist.sys.locale ${LANG_CODE}-${REGION_CODE}" || true
+            adb shell "setprop persist.sys.language ${LANG_CODE}" || true
+            adb shell "setprop persist.sys.country ${REGION_CODE}" || true
+            adb shell "settings put system system_locales ${LANG_CODE}-${REGION_CODE}" || true
+
+            # Apply locale change
+            adb shell am broadcast -a android.intent.action.LOCALE_CHANGED || true
+            sleep 2
+
+            for FLOW in Android/fastlane/Maestro/*.yaml Android/fastlane/Maestro/*.yml; do
+              [ -f "${FLOW}" ] || continue
+              echo "Running flow: ${FLOW} (locale: ${LOCALE})"
+              maestro --platform android test "${FLOW}" --test-output-dir "screenshots/${LOCALE}"
+            done
+
+            echo "::endgroup::"
+          done
+          EOF
+
+      - name: "Install APK and run Maestro tests for each locale"
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_7_pro
+          #profile: pixel_9 # not available?
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: sh -ex maestro.sh
+
+      - name: "Rename screenshots for flat upload"
+        run: |
+          find . -name '*.png'
+          mkdir -p android-screenshots
+          for LOCALE_DIR in screenshots/*/; do
+            [ -d "${LOCALE_DIR}" ] || continue
+            LOCALE=$(basename "${LOCALE_DIR}")
+            INDEX=0
+            for IMG in "${LOCALE_DIR}"*.png "${LOCALE_DIR}"**/*.png; do
+              [ -f "${IMG}" ] || continue
+              PADDED=$(printf "%02d" ${INDEX})
+              cp "${IMG}" "android-screenshots/Screen-${PADDED}-Android-${LOCALE}.png"
+              INDEX=$((INDEX + 1))
+            done
+          done
+          INDEX=0
+          for IMG in screenshots/*.png; do
+            [ -f "${IMG}" ] || continue
+            PADDED=$(printf "%02d" ${INDEX})
+            cp -v "${IMG}" "android-screenshots/Screen-${PADDED}-Android-default.png" 2>/dev/null
+            INDEX=$((INDEX + 1))
+          done
+
+      - name: "Upload Android screenshots"
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: android-screenshots
+          path: android-screenshots/
+
+  # ───────────────────────────────────────────────────────────────────
+  # 3a. Sign and release iOS app
+  # ───────────────────────────────────────────────────────────────────
+  release-ios-app:
+    needs: run-ios-app
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - name: "Download build artifacts"
+        uses: actions/download-artifact@v6
+        with:
+          name: skip-export
+          path: skip-export/
+
+      - name: "Download project sources"
+        uses: actions/download-artifact@v6
+        with:
+          name: project-sources
+
+      - name: "Download iOS screenshots"
+        uses: actions/download-artifact@v6
+        with:
+          name: ios-screenshots
+          path: ios-screenshots/
+
+      - name: "Check secrets availability"
+        id: check-secrets
+        env:
+          APPLE_CERTIFICATES_P12: ${{ secrets.APPLE_CERTIFICATES_P12 }}
+          APPLE_APPSTORE_APIKEY: ${{ secrets.APPLE_APPSTORE_APIKEY }}
+        run: |
+          echo "has-signing-cert=$(test -z "${APPLE_CERTIFICATES_P12}" && echo "false" || echo "true")" >> $GITHUB_OUTPUT
+          echo "has-appstore-key=$(test -z "${APPLE_APPSTORE_APIKEY}" && echo "false" || echo "true")" >> $GITHUB_OUTPUT
+
+      - name: "Setup Darwin App Signing"
+        id: signing
+        if: ${{ steps.check-secrets.outputs.has-signing-cert == 'true' }}
+        uses: apple-actions/import-codesign-certs@v6
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATES_P12 }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATES_P12_PASSWORD }}
+
+      - name: "Sign iOS app"
+        id: sign
+        if: ${{ steps.check-secrets.outputs.has-signing-cert == 'true' }}
+        run: |
+          # Re-sign the exported .xcarchive or .ipa with the imported certificate
+          IPA_PATH=$(find skip-export -name "*.ipa" | head -1)
+          if [ -n "${IPA_PATH}" ]; then
+            echo "ipa-path=${IPA_PATH}" >> $GITHUB_OUTPUT
+            echo "signed=true" >> $GITHUB_OUTPUT
+          else
+            echo "No IPA found to sign"
+            echo "signed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: "Submit iOS App to App Store"
+        if: ${{ steps.check-secrets.outputs.has-appstore-key == 'true' && steps.check-secrets.outputs.has-signing-cert == 'true' }}
+        working-directory: Darwin
+        env:
+          APPLE_APPSTORE_APIKEY: ${{ secrets.APPLE_APPSTORE_APIKEY }}
+        run: |
+          echo -n "${APPLE_APPSTORE_APIKEY}" | base64 --decode -o fastlane/apikey.json
+          # Copy screenshots into fastlane metadata structure
+          if [ -d ../ios-screenshots ]; then
+            for IMG in ../ios-screenshots/Screen-*-iOS-*.png; do
+              [ -f "${IMG}" ] || continue
+              LOCALE=$(echo "$(basename "${IMG}")" | sed 's/Screen-[0-9]*-iOS-\(.*\)\.png/\1/')
+              mkdir -p "fastlane/metadata/${LOCALE}/screenshots"
+              cp "${IMG}" "fastlane/metadata/${LOCALE}/screenshots/"
+            done
+          fi
+          fastlane release
+
+      - name: "Upload signed iOS artifacts"
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: ios-signed-artifacts
+          path: skip-export/*.ipa
+
+  # ───────────────────────────────────────────────────────────────────
+  # 3b. Sign and release Android app
+  # ───────────────────────────────────────────────────────────────────
+  release-android-app:
+    needs: run-android-app
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: "Download build artifacts"
+        uses: actions/download-artifact@v6
+        with:
+          name: skip-export
+          path: skip-export/
+
+      - name: "Download project sources"
+        uses: actions/download-artifact@v6
+        with:
+          name: project-sources
+
+      - name: "Download Android screenshots"
+        uses: actions/download-artifact@v6
+        with:
+          name: android-screenshots
+          path: android-screenshots/
+
+      - name: "Check secrets availability"
+        id: check-secrets
+        env:
+          KEYSTORE_PROPERTIES: ${{ secrets.KEYSTORE_PROPERTIES }}
+          GOOGLE_PLAY_APIKEY: ${{ secrets.GOOGLE_PLAY_APIKEY }}
+        run: |
+          echo "has-keystore=$(test -z "${KEYSTORE_PROPERTIES}" && echo "false" || echo "true")" >> $GITHUB_OUTPUT
+          echo "has-play-key=$(test -z "${GOOGLE_PLAY_APIKEY}" && echo "false" || echo "true")" >> $GITHUB_OUTPUT
+
+      - name: "Sign Android APK"
+        id: sign
+        if: ${{ steps.check-secrets.outputs.has-keystore == 'true' }}
+        env:
+          KEYSTORE_JKS: ${{ secrets.KEYSTORE_JKS }}
+          KEYSTORE_PROPERTIES: ${{ secrets.KEYSTORE_PROPERTIES }}
+        run: |
+          echo -n "${KEYSTORE_JKS}" | base64 --decode > Android/app/keystore.jks
+          echo -n "${KEYSTORE_PROPERTIES}" | base64 --decode > Android/app/keystore.properties
+
+          # Sign the release APK with apksigner
+          APK_PATH=$(find skip-export -name "*-release-unsigned.apk" -o -name "*-release.apk" | head -1)
+          if [ -z "${APK_PATH}" ]; then
+            APK_PATH=$(find skip-export -name "*.apk" | head -1)
+          fi
+
+          if [ -n "${APK_PATH}" ]; then
+            # Extract keystore properties
+            KEYSTORE_FILE="$(pwd)/Android/app/keystore.jks"
+            STORE_PASSWORD=$(grep 'storePassword' Android/app/keystore.properties | cut -d'=' -f2 | tr -d '[:space:]')
+            KEY_ALIAS=$(grep 'keyAlias' Android/app/keystore.properties | cut -d'=' -f2 | tr -d '[:space:]')
+            KEY_PASSWORD=$(grep 'keyPassword' Android/app/keystore.properties | cut -d'=' -f2 | tr -d '[:space:]')
+
+            SIGNED_APK="${APK_PATH%.apk}-signed.apk"
+            cp "${APK_PATH}" "${SIGNED_APK}"
+
+            # Use apksigner from Android SDK
+            APKSIGNER=$(find ${ANDROID_HOME}/build-tools -name "apksigner" | sort -V | tail -1)
+            if [ -n "${APKSIGNER}" ]; then
+              ${APKSIGNER} sign \
+                --ks "${KEYSTORE_FILE}" \
+                --ks-pass "pass:${STORE_PASSWORD}" \
+                --ks-key-alias "${KEY_ALIAS}" \
+                --key-pass "pass:${KEY_PASSWORD}" \
+                "${SIGNED_APK}"
+            fi
+
+            echo "signed=true" >> $GITHUB_OUTPUT
+          else
+            echo "No APK found to sign"
+            echo "signed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: "Submit Android App to Play Store"
+        if: ${{ steps.check-secrets.outputs.has-play-key == 'true' && steps.check-secrets.outputs.has-keystore == 'true' }}
+        working-directory: Android
+        env:
+          GOOGLE_PLAY_APIKEY: ${{ secrets.GOOGLE_PLAY_APIKEY }}
+        run: |
+          echo -n "${GOOGLE_PLAY_APIKEY}" | base64 --decode > fastlane/apikey.json
+          # Copy screenshots into fastlane metadata structure
+          if [ -d ../android-screenshots ]; then
+            for IMG in ../android-screenshots/Screen-*-Android-*.png; do
+              [ -f "${IMG}" ] || continue
+              LOCALE=$(echo "$(basename "${IMG}")" | sed 's/Screen-[0-9]*-Android-\(.*\)\.png/\1/')
+              mkdir -p "fastlane/metadata/android/${LOCALE}/images/phoneScreenshots"
+              cp "${IMG}" "fastlane/metadata/android/${LOCALE}/images/phoneScreenshots/"
+            done
+          fi
+          fastlane release
+
+      - name: "Upload signed Android artifacts"
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: android-signed-artifacts
+          path: |
+            skip-export/*-signed.apk
+            skip-export/*.aab
+
+  # ───────────────────────────────────────────────────────────────────
+  # 4. Create GitHub Release with all artifacts and screenshots
+  # ───────────────────────────────────────────────────────────────────
+  github-release:
+    needs: [release-ios-app, release-android-app]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: "Download build artifacts"
+        uses: actions/download-artifact@v6
+        with:
+          name: skip-export
+          path: skip-export/
+
+      - name: "Download iOS screenshots"
+        uses: actions/download-artifact@v6
+        with:
+          name: ios-screenshots
+          path: screenshots/
+        continue-on-error: true
+
+      - name: "Download Android screenshots"
+        uses: actions/download-artifact@v6
+        with:
+          name: android-screenshots
+          path: screenshots/
+        continue-on-error: true
+
+      - name: "Download signed iOS artifacts"
+        uses: actions/download-artifact@v6
+        with:
+          name: ios-signed-artifacts
+          path: signed-artifacts/
+        continue-on-error: true
+
+      - name: "Download signed Android artifacts"
+        uses: actions/download-artifact@v6
+        with:
+          name: android-signed-artifacts
+          path: signed-artifacts/
+        continue-on-error: true
+
+      - name: "Prepare release assets"
+        run: |
+          mkdir -p release-assets
+
+          # Copy build artifacts (skip directories, only files)
+          find skip-export -maxdepth 1 -type f -exec cp {} release-assets/ \;
+
+          # Copy signed artifacts if they exist
+          if [ -d signed-artifacts ]; then
+            find signed-artifacts -type f -exec cp {} release-assets/ \;
+          fi
+
+          # Copy screenshots with their flat names
+          if [ -d screenshots ]; then
+            find screenshots -name "*.png" -exec cp {} release-assets/ \;
+          fi
+
+          echo "Release assets:"
+          ls -la release-assets/
+
+      - name: "Create GitHub Release"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELTAG: ${{ needs.build-app.outputs.reltag }}
+        run: |
+          gh release create "${RELTAG}" \
+            -t "Release ${RELTAG}" \
+            --generate-notes \
+            --repo "${GITHUB_REPOSITORY}" \
+            release-assets/* \
+          || gh release upload "${RELTAG}" \
+            --clobber \
+            --repo "${GITHUB_REPOSITORY}" \
+            release-assets/*

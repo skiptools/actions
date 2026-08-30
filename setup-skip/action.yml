@@ -6,7 +6,7 @@ branding:
 
 inputs:
   skip-source:
-    description: 'The Homebrew source to install skip from (formula or cask or branch name)'
+    description: 'The Homebrew source to install skip from (formula or cask or branch name); "formula" automatically installs the cask instead on Intel macOS runners'
     required: false
     default: 'formula'
   run-doctor:
@@ -62,15 +62,30 @@ runs:
         # whether to install the canonical "skip" formula
         # or the skiptools cask tap version of the tool
         #export HOMEBREW_NO_AUTO_UPDATE=1
-        if [[ "${{ inputs.skip-source }}" == "formula" || "${{ inputs.skip-source }}" == "" ]]; then
+        skip_source="${{ inputs.skip-source }}"
+        if [[ "${skip_source}" == "" ]]; then
+          skip_source="formula"
+        fi
+
+        # homebrew-core builds the skip formula only for arm64 macOS and Linux, so on an
+        # Intel macOS runner like macos-15-intel `brew install skip` has no bottle and falls
+        # back to an Xcode source build that is impractical on CI. The cask installs the same
+        # universal release artifact and its dependencies are bottled for Intel, so use it.
+        runner_arch="${RUNNER_ARCH:-$(uname -m)}"
+        if [[ "${skip_source}" == "formula" && "${RUNNER_OS}" == "macOS" ]] && [[ "${runner_arch}" == "X64" || "${runner_arch}" == "x86_64" ]]; then
+          echo "::notice::Installing the skip cask rather than the homebrew-core formula, which has no Intel macOS bottle"
+          skip_source="cask"
+        fi
+
+        if [[ "${skip_source}" == "formula" ]]; then
           brew install skip
-        elif [[ "${{ inputs.skip-source }}" == "cask" ]]; then
+        elif [[ "${skip_source}" == "cask" ]]; then
           brew tap skiptools/skip
           brew install skiptools/skip/skip
         else
           # otherwise checkout and build the branch name in skip-source
           cd ${TMPDIR}
-          git clone --recurse-submodules --branch "${{ inputs.skip-source }}" https://github.com/skiptools/skipstone.git
+          git clone --recurse-submodules --branch "${skip_source}" https://github.com/skiptools/skipstone.git
           swift build --package-path skipstone/
           mv skipstone/.build/debug/SkipRunner skipstone/.build/debug/skip
           SKIPPATH="${PWD}/skipstone/.build/debug"

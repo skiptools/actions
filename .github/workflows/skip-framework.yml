@@ -35,7 +35,7 @@ on:
       runs-on:
         required: false
         type: string
-        default: "['macos-15-intel']"
+        default: "['macos-26-intel']"
       brew-install:
         required: false
         type: string

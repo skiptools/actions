@@ -27,22 +27,22 @@ jobs:
   # a failure in an app build. Mirrors what the skip-app "preview" matrix variant does: preview
   # toolchain + matching Swift SDK for Android, with the swiftbuild build system.
   setup-skip-preview:
-    runs-on: macos-26
+    # GitHub's preview image, whose only (and default) Xcode is 27 beta; the standard
+    # macos-26 image carries Xcode 26.x only, so no selection step is needed here.
+    runs-on: xcode-27
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
-      - name: "Select Xcode 27"
+      - name: "Confirm Xcode 27"
         run: |
           set -euo pipefail
-          XCODE_APP=$(find /Applications -maxdepth 1 -name "Xcode_27*.app" | sort -V | tail -1 || true)
-          if [ -z "${XCODE_APP}" ]; then
-            echo "::error::No Xcode 27 is installed on this runner image"
-            find /Applications -maxdepth 1 -name "Xcode*.app" || true
+          CURRENT_XCODE=$(xcodebuild -version | head -1)
+          if [[ "${CURRENT_XCODE}" != "Xcode 27"* ]]; then
+            echo "::error::Expected Xcode 27 on the xcode-27 image, found '${CURRENT_XCODE}'"
             exit 1
           fi
-          sudo xcode-select -s "${XCODE_APP}"
-          echo "DEVELOPER_DIR=${XCODE_APP}/Contents/Developer" >> "${GITHUB_ENV}"
           xcodebuild -version
+          swift --version
       - uses: ./setup-skip
         with:
           skip-source: swiftbuild-native

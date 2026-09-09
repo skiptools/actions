@@ -74,6 +74,16 @@ on:
         required: false
         type: string
         default: 'release'
+      preview-runs-on:
+        description: |
+          Runner label for the `preview` variant of `swift-toolchains: dual`. Defaults to
+          GitHub's `xcode-27` preview image, which ships Xcode 27 beta as its only (and
+          default) Xcode; the standard `macos-26` image carries Xcode 26.x only. That image
+          is marked preview and its capacity is limited, so set this to `xcode-27-xlarge`
+          (or a newer label) if jobs queue for too long.
+        required: false
+        type: string
+        default: 'xcode-27'
       derived-source-branch:
         description: |
           When set, the workflow extracts `skip-export/<MODULE>-project.zip`
@@ -124,6 +134,7 @@ jobs:
         id: matrix
         env:
           SWIFT_TOOLCHAINS: ${{ inputs.swift-toolchains }}
+          PREVIEW_RUNS_ON: ${{ inputs.preview-runs-on }}
         run: |
           set -euo pipefail
 
@@ -135,7 +146,7 @@ jobs:
           # The preview toolchain: Xcode 27 beta / Swift 6.4, with the matching Swift SDK for
           # Android snapshot from swift.org (there is no Homebrew cask for the 6.4 branch and
           # swiftly cannot resolve it), built with the `swiftbuild` build system.
-          PREVIEW='{"name":"preview","runs-on":"macos-26","xcode":"27","build-system":"swiftbuild","swift-snapshot":"swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-09-04-a","swift-snapshot-branch":"swift-6.4.x-branch","primary":false}'
+          PREVIEW='{"name":"preview","runs-on":"'"${PREVIEW_RUNS_ON}"'","xcode":"27","build-system":"swiftbuild","swift-snapshot":"swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-09-04-a","swift-snapshot-branch":"swift-6.4.x-branch","primary":false}'
 
           case "${SWIFT_TOOLCHAINS}" in
             dual)    MATRIX="{\"include\":[${RELEASE},${PREVIEW}]}" ;;
@@ -166,17 +177,28 @@ jobs:
       # silently testing whatever the image happens to default to.
       - name: "Select Xcode ${{ matrix.xcode }}"
         if: ${{ matrix.xcode != '' }}
+        env:
+          XCODE_MAJOR: ${{ matrix.xcode }}
         run: |
           set -euo pipefail
-          XCODE_APP=$(find /Applications -maxdepth 1 -name "Xcode_${{ matrix.xcode }}*.app" 2>/dev/null | sort -V | tail -1 || true)
-          if [ -z "${XCODE_APP}" ]; then
-            echo "::error::No Xcode ${{ matrix.xcode }} is installed on this runner image"
-            find /Applications -maxdepth 1 -name "Xcode*.app" || true
-            exit 1
+          XCODE_APP=$(find /Applications -maxdepth 1 -name "Xcode_${XCODE_MAJOR}*.app" 2>/dev/null | sort -V | tail -1 || true)
+          if [ -n "${XCODE_APP}" ]; then
+            echo "Selecting ${XCODE_APP}"
+            sudo xcode-select -s "${XCODE_APP}"
+            echo "DEVELOPER_DIR=${XCODE_APP}/Contents/Developer" >> "${GITHUB_ENV}"
+          else
+            # Images that carry a single Xcode install it as the default rather than as a
+            # versioned /Applications/Xcode_NN.app, so there is nothing to select — this is how
+            # the `xcode-27` preview image ships. Confirm the default is the requested major
+            # version instead of silently building against whatever the image happens to have.
+            CURRENT_XCODE=$(xcodebuild -version | head -1)
+            if [[ "${CURRENT_XCODE}" != "Xcode ${XCODE_MAJOR}"* ]]; then
+              echo "::error::Xcode ${XCODE_MAJOR} is not installed on this runner image (default is '${CURRENT_XCODE}'); use a runner label whose image provides it"
+              find /Applications -maxdepth 1 -name "Xcode*.app" || true
+              exit 1
+            fi
+            echo "Using the image's default Xcode: ${CURRENT_XCODE}"
           fi
-          echo "Selecting ${XCODE_APP}"
-          sudo xcode-select -s "${XCODE_APP}"
-          echo "DEVELOPER_DIR=${XCODE_APP}/Contents/Developer" >> "${GITHUB_ENV}"
           xcodebuild -version
           swift --version
 

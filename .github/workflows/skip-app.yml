@@ -191,7 +191,11 @@ jobs:
             # versioned /Applications/Xcode_NN.app, so there is nothing to select — this is how
             # the `xcode-27` preview image ships. Confirm the default is the requested major
             # version instead of silently building against whatever the image happens to have.
-            CURRENT_XCODE=$(xcodebuild -version | head -1)
+            # NB: do not pipe `xcodebuild -version` into `head`; when head closes the pipe early,
+            # xcodebuild aborts with NSFileHandleOperationException (exit 134) instead of
+            # exiting quietly, which fails the step under `set -o pipefail`.
+            CURRENT_XCODE=$(xcodebuild -version)
+            CURRENT_XCODE="${CURRENT_XCODE%%$'\n'*}"
             if [[ "${CURRENT_XCODE}" != "Xcode ${XCODE_MAJOR}"* ]]; then
               echo "::error::Xcode ${XCODE_MAJOR} is not installed on this runner image (default is '${CURRENT_XCODE}'); use a runner label whose image provides it"
               find /Applications -maxdepth 1 -name "Xcode*.app" || true

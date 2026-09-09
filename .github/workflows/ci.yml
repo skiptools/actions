@@ -10,7 +10,8 @@ jobs:
       fail-fast: false
       matrix:
         os: ['macos-latest', 'ubuntu-latest']
-        skip-source: ['formula', 'cask', 'main']
+        # 'swiftbuild-native' is the skipstone PR branch under test; restore to 'main' when merged
+        skip-source: ['formula', 'cask', 'swiftbuild-native']
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -21,4 +22,32 @@ jobs:
       - run: skip android sdk install --verbose
       - run: skip checkup
         if: ${{ startsWith(matrix.os, 'macos-') }}
+
+  # Exercises the swift-snapshot inputs on their own, so a failure there is distinguishable from
+  # a failure in an app build. Mirrors what the skip-app "preview" matrix variant does: preview
+  # toolchain + matching Swift SDK for Android, with the swiftbuild build system.
+  setup-skip-preview:
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - name: "Select Xcode 27"
+        run: |
+          set -euo pipefail
+          XCODE_APP=$(find /Applications -maxdepth 1 -name "Xcode_27*.app" | sort -V | tail -1 || true)
+          if [ -z "${XCODE_APP}" ]; then
+            echo "::error::No Xcode 27 is installed on this runner image"
+            find /Applications -maxdepth 1 -name "Xcode*.app" || true
+            exit 1
+          fi
+          sudo xcode-select -s "${XCODE_APP}"
+          echo "DEVELOPER_DIR=${XCODE_APP}/Contents/Developer" >> "${GITHUB_ENV}"
+          xcodebuild -version
+      - uses: ./setup-skip
+        with:
+          skip-source: swiftbuild-native
+          install-swift-android-sdk: 'true'
+          swift-snapshot: swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-09-04-a
+          swift-snapshot-branch: swift-6.4.x-branch
+      - run: skip checkup --native --build-system swiftbuild
 

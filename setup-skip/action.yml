@@ -37,6 +37,21 @@ inputs:
     description: 'Version of the Android SDK to install with the Swift SDK for  Android'
     required: false
     default: ''
+  swift-snapshot:
+    description: |
+      Full name of a swift.org development snapshot to use instead of a released
+      toolchain, e.g. "swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-09-04-a". When set, both the
+      host toolchain and the Swift SDK for Android are downloaded from download.swift.org
+      rather than from swiftly and the skiptools Homebrew cask, neither of which carries
+      preview branches. Requires `swift-snapshot-branch`.
+    required: false
+    default: ''
+  swift-snapshot-branch:
+    description: |
+      The download.swift.org branch directory holding `swift-snapshot`,
+      e.g. "swift-6.4.x-branch". Only used when `swift-snapshot` is set.
+    required: false
+    default: ''
   verbose:
     description: 'Whether to be verbose when running setup commands'
     required: false
@@ -127,14 +142,78 @@ runs:
       run: swiftly init --skip-install --assume-yes
 
     - name: Install Host Swift Toolchain
-      if: ${{ inputs.swift-version != '' }}
+      if: ${{ inputs.swift-version != '' && inputs.swift-snapshot == '' }}
       shell: bash
       run: |
         # TODO: Error: invalid toolchain selector: "nightly-6.3"
         swiftly install ${{ inputs.swift-version }}
 
+    # Preview toolchains (e.g. the 6.4.x branch) are not resolvable by swiftly and have no
+    # skiptools Homebrew cask, so the host toolchain and the matching Swift SDK for Android are
+    # fetched straight from swift.org. The two must be the same snapshot: the SDK's modules are
+    # only loadable by the compiler that produced them.
+    - name: Install Swift snapshot toolchain and Swift SDK for Android
+      if: ${{ inputs.swift-snapshot != '' }}
+      shell: bash
+      env:
+        SNAPSHOT: ${{ inputs.swift-snapshot }}
+        BRANCH: ${{ inputs.swift-snapshot-branch }}
+        INSTALL_ANDROID_SDK: ${{ inputs.install-swift-android-sdk }}
+      run: |
+        set -euo pipefail
+
+        if [ -z "${BRANCH}" ]; then
+          echo "::error::swift-snapshot-branch is required when swift-snapshot is set"
+          exit 1
+        fi
+
+        if [ "${RUNNER_OS}" != "macOS" ]; then
+          echo "::error::swift-snapshot installation is currently implemented for macOS runners only"
+          exit 1
+        fi
+
+        # Installs into ~/Library/Developer/Toolchains, which is where `skip android build` looks
+        # for the toolchain matching the Swift SDK for Android. Xcode's own toolchain cannot
+        # cross-compile for Android: it ships no swift-autolink-extract, so linking fails with
+        # "env: swift-autolink-extract: No such file or directory".
+        curl -fsSL --retry 5 -o "${RUNNER_TEMP}/swift-toolchain.pkg" \
+          "https://download.swift.org/${BRANCH}/xcode/${SNAPSHOT}/${SNAPSHOT}-osx.pkg"
+        installer -pkg "${RUNNER_TEMP}/swift-toolchain.pkg" -target CurrentUserHomeDirectory
+
+        SNAPSHOT_SWIFT="${HOME}/Library/Developer/Toolchains/${SNAPSHOT}.xctoolchain/usr/bin/swift"
+        if [ ! -x "${SNAPSHOT_SWIFT}" ]; then
+          echo "::error::Snapshot toolchain was not installed at ${SNAPSHOT_SWIFT}"
+          ls "${HOME}/Library/Developer/Toolchains/" || true
+          exit 1
+        fi
+        "${SNAPSHOT_SWIFT}" --version
+
+        if [ "${INSTALL_ANDROID_SDK}" == "true" ]; then
+          # the NDK that the SDK's sysroot is linked against
+          brew install --cask android-ndk
+
+          curl -fsSL --retry 5 -o "${RUNNER_TEMP}/swift-android-sdk.tar.gz" \
+            "https://download.swift.org/${BRANCH}/android-sdk/${SNAPSHOT}/${SNAPSHOT}_android.artifactbundle.tar.gz"
+
+          # Install with the snapshot's own swift: the runner's Xcode may ship an older SwiftPM
+          # that does not understand the bundle's swift-sdk.json schema. The destination
+          # (~/Library/org.swift.swiftpm/swift-sdks) is the same either way.
+          "${SNAPSHOT_SWIFT}" sdk install "${RUNNER_TEMP}/swift-android-sdk.tar.gz"
+
+          # Unlike the Homebrew cask (whose postflight does this), the downloaded bundle ships
+          # without an `ndk-sysroot`; its own script links one against the installed NDK.
+          SDK_DIR="${HOME}/Library/org.swift.swiftpm/swift-sdks/${SNAPSHOT}_android.artifactbundle/swift-android"
+          ANDROID_NDK_HOME="$(brew --prefix)/share/android-ndk" "${SDK_DIR}/scripts/setup-android-sdk.sh"
+
+          "${SNAPSHOT_SWIFT}" sdk list
+
+          # workaround fail when ANDROID_NDK_ROOT is set
+          # see https://github.com/finagolfin/swift-android-sdk/issues/207
+          echo "ANDROID_NDK_ROOT=" >> $GITHUB_ENV
+        fi
+
     - name: Install Swift SDK for Android
-      if: ${{ inputs.install-swift-android-sdk == 'true' }}
+      if: ${{ inputs.install-swift-android-sdk == 'true' && inputs.swift-snapshot == '' }}
       shell: bash
       run: |
         sdk_version_arg=""

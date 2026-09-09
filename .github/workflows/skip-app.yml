@@ -55,6 +55,35 @@ on:
         required: false
         type: string
         default: ''
+      swift-toolchains:
+        description: |
+          Which Swift toolchain / Swift SDK for Android combination(s) to build against.
+
+            release  (default) a single job on the current release toolchain, which is
+                     what every app built before this input existed.
+            dual     two jobs in parallel:
+                       * release — Xcode 26 / Swift 6.3 / Swift SDK for Android 6.3, using
+                         SwiftPM's legacy `native` build system.
+                       * preview — Xcode 27 beta / Swift 6.4 / Swift SDK for Android 6.4,
+                         using the `swiftbuild` build system that becomes SwiftPM's default
+                         in Swift 6.4 and which lays build products out differently.
+                     Only the `release` job publishes: releases, store submissions,
+                     attestations and the derived-source branch are all skipped for
+                     `preview`, so the preview toolchain can fail without affecting a
+                     shipped build.
+        required: false
+        type: string
+        default: 'release'
+      preview-runs-on:
+        description: |
+          Runner label for the `preview` variant of `swift-toolchains: dual`. Defaults to
+          GitHub's `xcode-27` preview image, which ships Xcode 27 beta as its only (and
+          default) Xcode; the standard `macos-26` image carries Xcode 26.x only. That image
+          is marked preview and its capacity is limited, so set this to `xcode-27-xlarge`
+          (or a newer label) if jobs queue for too long.
+        required: false
+        type: string
+        default: 'xcode-27'
       derived-source-branch:
         description: |
           When set, the workflow extracts `skip-export/<MODULE>-project.zip`
@@ -92,10 +121,91 @@ on:
       APPLE_MOBILEPROVISION:
         required: false
 jobs:
-  skip-app:
-    runs-on: macos-26
-    timeout-minutes: 180
+  # Emits the build matrix for `skip-app`. Reusable workflows cannot take a matrix as an
+  # input, so the `swift-toolchains` input is expanded into one here. Each entry pins the
+  # Xcode to select, how to obtain the Swift SDK for Android, and which SwiftPM build system
+  # to use; `primary` marks the single variant that is allowed to publish artifacts.
+  configure:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
+      - name: "Compute build matrix"
+        id: matrix
+        env:
+          SWIFT_TOOLCHAINS: ${{ inputs.swift-toolchains }}
+          PREVIEW_RUNS_ON: ${{ inputs.preview-runs-on }}
+        run: |
+          set -euo pipefail
+
+          # The released toolchain: Xcode 26 / Swift 6.3, the Swift SDK for Android that
+          # `skip android sdk install` resolves, and SwiftPM's legacy `native` build system.
+          # An empty build-system leaves the choice to skip, preserving previous behavior.
+          RELEASE='{"name":"release","runs-on":"macos-26","xcode":"26","build-system":"","swift-snapshot":"","swift-snapshot-branch":"","primary":true}'
+
+          # The preview toolchain: Xcode 27 beta / Swift 6.4, with the matching Swift SDK for
+          # Android snapshot from swift.org (there is no Homebrew cask for the 6.4 branch and
+          # swiftly cannot resolve it), built with the `swiftbuild` build system.
+          PREVIEW='{"name":"preview","runs-on":"'"${PREVIEW_RUNS_ON}"'","xcode":"27","build-system":"swiftbuild","swift-snapshot":"swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-09-04-a","swift-snapshot-branch":"swift-6.4.x-branch","primary":false}'
+
+          case "${SWIFT_TOOLCHAINS}" in
+            dual)    MATRIX="{\"include\":[${RELEASE},${PREVIEW}]}" ;;
+            release|'') MATRIX="{\"include\":[${RELEASE}]}" ;;
+            *)
+              echo "::error::Unsupported swift-toolchains value '${SWIFT_TOOLCHAINS}' (expected 'release' or 'dual')"
+              exit 1
+              ;;
+          esac
+
+          echo "${MATRIX}" | jq .
+          echo "matrix=${MATRIX}" >> "${GITHUB_OUTPUT}"
+
+  skip-app:
+    needs: configure
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.configure.outputs.matrix) }}
+    name: "skip-app (${{ matrix.name }})"
+    runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 180
+    env:
+      # Honored by every nested `skip` build (the Darwin verification build and the
+      # `skip android build` that the generated gradle project launches); empty means "auto".
+      SKIP_BUILD_SYSTEM: ${{ matrix.build-system }}
+    steps:
+      # Select the Xcode this variant is meant to exercise, failing loudly rather than
+      # silently testing whatever the image happens to default to.
+      - name: "Select Xcode ${{ matrix.xcode }}"
+        if: ${{ matrix.xcode != '' }}
+        env:
+          XCODE_MAJOR: ${{ matrix.xcode }}
+        run: |
+          set -euo pipefail
+          XCODE_APP=$(find /Applications -maxdepth 1 -name "Xcode_${XCODE_MAJOR}*.app" 2>/dev/null | sort -V | tail -1 || true)
+          if [ -n "${XCODE_APP}" ]; then
+            echo "Selecting ${XCODE_APP}"
+            sudo xcode-select -s "${XCODE_APP}"
+            echo "DEVELOPER_DIR=${XCODE_APP}/Contents/Developer" >> "${GITHUB_ENV}"
+          else
+            # Images that carry a single Xcode install it as the default rather than as a
+            # versioned /Applications/Xcode_NN.app, so there is nothing to select — this is how
+            # the `xcode-27` preview image ships. Confirm the default is the requested major
+            # version instead of silently building against whatever the image happens to have.
+            # NB: do not pipe `xcodebuild -version` into `head`; when head closes the pipe early,
+            # xcodebuild aborts with NSFileHandleOperationException (exit 134) instead of
+            # exiting quietly, which fails the step under `set -o pipefail`.
+            CURRENT_XCODE=$(xcodebuild -version)
+            CURRENT_XCODE="${CURRENT_XCODE%%$'\n'*}"
+            if [[ "${CURRENT_XCODE}" != "Xcode ${XCODE_MAJOR}"* ]]; then
+              echo "::error::Xcode ${XCODE_MAJOR} is not installed on this runner image (default is '${CURRENT_XCODE}'); use a runner label whose image provides it"
+              find /Applications -maxdepth 1 -name "Xcode*.app" || true
+              exit 1
+            fi
+            echo "Using the image's default Xcode: ${CURRENT_XCODE}"
+          fi
+          xcodebuild -version
+          swift --version
+
       - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
@@ -184,11 +294,19 @@ jobs:
           # presume the native toolchain
           yq -e '.skip.mode' Sources/*/Skip/skip.yml >> /dev/null && echo "skip-fuse=true" >> $GITHUB_OUTPUT || echo "Native toolchain not needed"
 
-      - uses: skiptools/actions/setup-skip@v1
+      # TESTING ONLY — revert to @v1 before merging.
+      # A reusable workflow does not resolve sibling actions relative to its own ref, so while
+      # this branch is under test the composite action must be pinned to the same branch;
+      # otherwise this resolves to the v1 tag, which has no swift-snapshot inputs and fails with
+      # "Unexpected input(s) 'swift-snapshot'".
+      - uses: skiptools/actions/setup-skip@dual-build-system
         with:
           verify-project: '.'
           skip-source: '${{ inputs.skip-source }}'
           install-swift-android-sdk: ${{ steps.setup.outputs.skip-fuse }}
+          # empty for the release variant, which installs the SDK the usual way
+          swift-snapshot: ${{ matrix.swift-snapshot }}
+          swift-snapshot-branch: ${{ matrix.swift-snapshot-branch }}
 
       - name: "Run Tests"
         if: ${{ inputs.run-local-tests == true && ! startsWith(github.ref, 'refs/tags/') }}
@@ -244,7 +362,7 @@ jobs:
       # workflow's `${{ github.token }}` (which requires the caller workflow
       # to declare `permissions: contents: write`).
       - name: "Update derived source branch"
-        if: ${{ inputs.derived-source-branch != '' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')) }}
+        if: ${{ matrix.primary && inputs.derived-source-branch != '' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')) }}
         env:
           DERIVED_BRANCH: ${{ inputs.derived-source-branch }}
           DERIVED_TAG_SUFFIX: ${{ inputs.derived-source-tag-suffix }}
@@ -332,7 +450,7 @@ jobs:
         run: test ! -d fastlane || FASTLANE_SKIP_ARCHIVE=YES FASTLANE_SKIP_CODESIGNING=YES FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT=300 FASTLANE_XCODEBUILD_SETTINGS_RETRIES=5 fastlane assemble
 
       - name: "Submit iOS App to App Store"
-        if: ${{ startsWith(github.ref, 'refs/tags/') && env.APPLE_APPSTORE_APIKEY != '' }}
+        if: ${{ matrix.primary && startsWith(github.ref, 'refs/tags/') && env.APPLE_APPSTORE_APIKEY != '' }}
         working-directory: Darwin
         env:
           APPLE_APPSTORE_APIKEY: ${{ secrets.APPLE_APPSTORE_APIKEY }}
@@ -341,7 +459,7 @@ jobs:
           fastlane release
 
       - name: "Submit Android App to Play Store"
-        if: ${{ startsWith(github.ref, 'refs/tags/') && env.GOOGLE_PLAY_APIKEY != '' }}
+        if: ${{ matrix.primary && startsWith(github.ref, 'refs/tags/') && env.GOOGLE_PLAY_APIKEY != '' }}
         env:
           GOOGLE_PLAY_APIKEY: ${{ secrets.GOOGLE_PLAY_APIKEY }}
         working-directory: Android
@@ -350,17 +468,17 @@ jobs:
           fastlane release
 
       - name: "Create release checksums"
-        if: startsWith(github.ref, 'refs/tags/')
+        if: ${{ matrix.primary && startsWith(github.ref, 'refs/tags/') }}
         working-directory: skip-export
         run: shasum -a 256 *.* > checksums.txt
 
       - uses: actions/attest@v4
-        if: startsWith(github.ref, 'refs/tags/')
+        if: ${{ matrix.primary && startsWith(github.ref, 'refs/tags/') }}
         with:
           subject-checksums: skip-export/checksums.txt
 
       - name: "Create GitHub Release"
-        if: startsWith(github.ref, 'refs/tags/')
+        if: ${{ matrix.primary && startsWith(github.ref, 'refs/tags/') }}
         env:
           GH_TOKEN: ${{ github.token }}
         # Create a release or upload the assets if the release already exists
@@ -370,5 +488,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: always()
         with:
+          # distinct per matrix variant, since two jobs would otherwise upload the same name
+          name: skip-export-${{ matrix.name }}
           path: skip-export/
 

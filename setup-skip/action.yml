@@ -49,6 +49,24 @@ runs:
       id: set-up-homebrew
       uses: Homebrew/actions/setup-homebrew@main
 
+    # Homebrew's tap-trust gate refuses to load casks from third-party taps until they are
+    # trusted, failing the install with:
+    #   Refusing to load cask skiptools/skip/skip from untrusted tap skiptools/skip.
+    # This affects `brew install skiptools/skip/skip` (the cask path used on Intel macOS
+    # runners, which have no homebrew-core bottle) and the `swift-android-toolchain@<version>`
+    # casks that `skip android sdk install` installs. Those toolchain cask names are computed at
+    # runtime from the requested SDK version, so the whole tap is trusted rather than individual
+    # casks; it is Skip's own first-party tap, and this only affects the ephemeral runner.
+    - name: Trust the skiptools Homebrew tap
+      shell: bash
+      run: |
+        if brew trust --help >/dev/null 2>&1; then
+          # works before the tap is added, and is a no-op if already trusted
+          brew trust skiptools/skip
+        else
+          echo "This version of Homebrew has no 'brew trust' command; tap trust is not enforced."
+        fi
+
     - name: Install Gradle
       if: ${{ inputs.gradle-version != '' && inputs.gradle-version != 'none' }}
       uses: gradle/actions/setup-gradle@v5

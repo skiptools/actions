@@ -399,8 +399,15 @@ jobs:
         if: ${{ runner.os == 'macOS' && startsWith(github.ref, 'refs/tags/') }}
         env:
           GH_TOKEN: ${{ github.token }}
+        # Create the release for the tag, or if a release was already created
+        # manually for this tag, just upload the exported artifacts to it
         run: |
-          if [ -d "skip-export" ]; then
+          if gh release view "${RELTAG}" > /dev/null 2>&1; then
+            echo "Release ${RELTAG} already exists; uploading assets"
+            if [ -d "skip-export" ]; then
+              gh release upload "${RELTAG}" --clobber skip-export/*.*
+            fi
+          elif [ -d "skip-export" ]; then
             gh release create "${RELTAG}" -t "Release ${RELTAG}" --generate-notes skip-export/*.*
           else
             gh release create "${RELTAG}" -t "Release ${RELTAG}" --generate-notes

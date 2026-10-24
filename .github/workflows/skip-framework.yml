@@ -89,6 +89,13 @@ on:
         required: false
         type: string
         default: 'default'
+      emulator-host-build:
+        # 'full' runs the emulator tests through the host `swift test --filter XCSkipTests`;
+        # 'transpile' only transpiles the test targets and runs their Gradle project directly,
+        # so packages whose host Swift build is macOS-only can run their emulator tests on Linux
+        required: false
+        type: string
+        default: 'full'
       emulator-launcher:
         required: false
         type: string
@@ -350,6 +357,13 @@ jobs:
         run: |
           adb logcat *:E TestRunner:V & ANDROID_SERIAL=emulator-5554 swift test --filter XCSkipTests
 
+      - name: Transpile for Android emulator tests
+        if: ${{ inputs.emulator-host-build == 'transpile' && inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && runner.arch != 'ARM64' }}
+        run: |
+          # every test target with a Skip/skip.yml, as the skipstone plugin would transpile in `swift test`
+          TARGETS=$(swift package dump-package | jq -r '.targets[] | select(.type == "test") | .name' | while read -r t; do if [ -f "Tests/${t}/Skip/skip.yml" ]; then echo "--target ${t}"; fi; done)
+          swift package --disable-sandbox --allow-writing-to-package-directory skip-transpile ${TARGETS}
+
       - name: Cache ReactiveCircus Android emulator snapshot
         if: ${{ inputs.emulator-launcher != 'skip' && inputs.run-android-tests == true && !startsWith(github.ref, 'refs/tags/') && runner.arch != 'ARM64' }}
         uses: actions/cache@v6
@@ -397,7 +411,8 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: adb logcat *:E TestRunner:V & swift test --filter XCSkipTests
+          # in 'transpile' mode, run what XCSkipTests runs (connectedDebugAndroidTest) in each test target's transpiled Gradle project
+          script: ${{ inputs.emulator-host-build == 'transpile' && 'adb logcat *:E TestRunner:V & for dir in .build/plugins/outputs/*/*Tests/destination/skipstone; do gradle connectedDebugAndroidTest --console=plain --project-dir "$dir" || exit 1; done' || 'adb logcat *:E TestRunner:V & swift test --filter XCSkipTests' }}
 
       - name: "Release"
         if: ${{ runner.os == 'macOS' && startsWith(github.ref, 'refs/tags/') }}

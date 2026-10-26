@@ -10,7 +10,8 @@ jobs:
       fail-fast: false
       matrix:
         os: ['macos-latest', 'ubuntu-latest']
-        skip-source: ['formula', 'cask', 'main']
+        # 'swiftbuild-native' is the skipstone PR branch under test; restore to 'main' when merged
+        skip-source: ['formula', 'cask', 'swiftbuild-native']
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -21,4 +22,36 @@ jobs:
       - run: skip android sdk install --verbose
       - run: skip checkup
         if: ${{ startsWith(matrix.os, 'macos-') }}
+
+  # Exercises the swift-snapshot inputs on their own, so a failure there is distinguishable from
+  # a failure in an app build. Mirrors what the skip-app "preview" matrix variant does: preview
+  # toolchain + matching Swift SDK for Android, with the swiftbuild build system.
+  setup-skip-preview:
+    # GitHub's preview image, whose only (and default) Xcode is 27 beta; the standard
+    # macos-26 image carries Xcode 26.x only, so no selection step is needed here.
+    runs-on: xcode-27
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - name: "Confirm Xcode 27"
+        run: |
+          set -euo pipefail
+          # NB: do not pipe `xcodebuild -version` into `head`; when head closes the pipe early,
+          # xcodebuild aborts with NSFileHandleOperationException (exit 134) instead of exiting
+          # quietly, which fails the step under `set -o pipefail`.
+          CURRENT_XCODE=$(xcodebuild -version)
+          CURRENT_XCODE="${CURRENT_XCODE%%$'\n'*}"
+          if [[ "${CURRENT_XCODE}" != "Xcode 27"* ]]; then
+            echo "::error::Expected Xcode 27 on the xcode-27 image, found '${CURRENT_XCODE}'"
+            exit 1
+          fi
+          xcodebuild -version
+          swift --version
+      - uses: ./setup-skip
+        with:
+          skip-source: swiftbuild-native
+          install-swift-android-sdk: 'true'
+          swift-snapshot: swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-09-04-a
+          swift-snapshot-branch: swift-6.4.x-branch
+      - run: skip checkup --native --build-system swiftbuild
 

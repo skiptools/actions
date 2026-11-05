@@ -66,7 +66,7 @@ steps:
 
 ## skip-framework Workflow
 
-A reusable workflow for building and testing Skip framework libraries. It performs license header verification, runs Swift and Kotlin/Robolectric tests, optionally runs instrumented Android emulator tests, builds a `skip export`, and creates GitHub releases on semver tags.
+A reusable workflow for building and testing Skip framework libraries. It runs Swift and Kotlin/Robolectric tests, optionally runs instrumented Android emulator tests, builds a `skip export`, and creates GitHub releases on semver tags.
 
 Use this workflow for any Skip framework or library project (e.g., `skip-foundation`, `skip-model`, `skip-ui`).
 
